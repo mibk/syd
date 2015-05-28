@@ -75,6 +75,7 @@ package text
 
 import (
 	"errors"
+	"io"
 	"time"
 )
 
@@ -453,15 +454,33 @@ func (t *Text) Modified() bool {
 	return t.head > 0 && t.savedAction == t.actions[t.head-1]
 }
 
-// AllContent is a naive method for getting the content of the text.
-// It will be removed soon.
-func (t *Text) AllContent() string {
-	var data []byte
-	p := t.begin.next
-	for p != t.end {
-		data = append(data, p.data...)
-		p = p.next
+func (t *Text) GetReader() *Reader {
+	return &Reader{t}
+}
 
+type Reader struct {
+	text *Text
+}
+
+func (r *Reader) ReadAt(data []byte, off int64) (n int, err error) {
+	p := r.text.begin
+	for ; p != nil; p = p.next {
+		if off < int64(p.len()) {
+			break
+		}
+		off -= int64(p.len())
 	}
-	return string(data)
+	if p == nil {
+		return 0, ErrWrongPos
+	}
+
+	for n < len(data) && p != nil {
+		n += copy(data[n:], p.data[off:])
+		p = p.next
+		off = 0
+	}
+	if n < len(data) {
+		return n, io.EOF
+	}
+	return n, nil
 }

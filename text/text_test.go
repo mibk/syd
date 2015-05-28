@@ -1,7 +1,9 @@
 package text
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"testing"
 )
 
@@ -153,6 +155,41 @@ func TextSaving(t *testing.T) {
 	txt.checkModified(t, false)
 }
 
+func TestReader(t *testing.T) {
+	txt := New(nil)
+	txt.insertString(0, "So many")
+	txt.insertString(7, " books,")
+	txt.insertString(14, " so little")
+	txt.insertString(24, " time.")
+	txt.checkContent(t, "So many books, so little time.")
+
+	cases := []struct {
+		off, len int
+		expected string
+		err      error
+	}{
+		{0, 7, "So many", nil},
+		{1, 11, "o many book", nil},
+		{8, 4, "book", nil},
+		{15, 20, "so little time.", io.EOF},
+	}
+
+	r := txt.GetReader()
+	for _, c := range cases {
+		data := make([]byte, c.len)
+		n, err := r.ReadAt(data, int64(c.off))
+		if err != c.err {
+			t.Errorf("expected error %v, got %v", c.err, err)
+		}
+		if n != len(c.expected) {
+			t.Errorf("n should be %d, got %d", len(c.expected), n)
+		}
+		if !bytes.Equal(data[:n], []byte(c.expected)) {
+			t.Errorf("got '%s', want '%s'", data[:n], c.expected)
+		}
+	}
+}
+
 func (txt *Text) checkPiecesCnt(t *testing.T, expected int) {
 	if txt.piecesCnt != expected {
 		t.Errorf("got %d pieces, want %d", txt.piecesCnt, expected)
@@ -160,7 +197,7 @@ func (txt *Text) checkPiecesCnt(t *testing.T, expected int) {
 }
 
 func (txt *Text) checkContent(t *testing.T, expected string) {
-	c := txt.AllContent()
+	c := txt.allContent()
 	if c != expected {
 		t.Errorf("got '%s', want '%s'", c, expected)
 	}
@@ -209,4 +246,15 @@ func (txt *Text) checkModified(t *testing.T, expected bool) {
 			t.Errorf("text should not be modified")
 		}
 	}
+}
+
+func (t *Text) allContent() string {
+	var data []byte
+	p := t.begin.next
+	for p != t.end {
+		data = append(data, p.data...)
+		p = p.next
+
+	}
+	return string(data)
 }
