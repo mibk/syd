@@ -299,7 +299,17 @@ func (t *Text) Delete(pos, length int) error {
 	if p == nil {
 		return ErrWrongPos
 	} else if p == t.cachedPiece {
-		// try to update the last inserted piece if the length doesn't exceeds
+		p := p
+		offset := offset
+		if offset == p.len() {
+			// if the offset is in the end, try to update the next piece
+			p = p.next
+			if p == nil {
+				panic("p shouldn't be nil")
+			}
+			offset = 0
+		}
+		// try to update the last inserted piece if the length doesn't exceed
 		if p.delete(offset, length) {
 			return nil
 		}
@@ -345,13 +355,19 @@ func (t *Text) Delete(pos, length int) error {
 		// deletion stops midway through a piece
 		midwayEnd = true
 		end = p
-		after = t.newPiece(p.data[p.len()-cur+length:], before, p.next)
+
+		beg := p.len() - cur + length
+		newBuf := make([]byte, len(p.data[beg:]))
+		copy(newBuf, p.data[beg:])
+		after = t.newPiece(newBuf, before, p.next)
 	}
 
 	var newStart, newEnd *piece
 	if midwayStart {
 		// we finally know which piece follows our newly allocated before piece
-		before.data = start.data[:offset]
+		newBuf := make([]byte, len(start.data[:offset]))
+		copy(newBuf, start.data[:offset])
+		before.data = newBuf
 		before.prev, before.next = start.prev, after
 
 		newStart = before
@@ -366,6 +382,7 @@ func (t *Text) Delete(pos, length int) error {
 		}
 	}
 
+	t.cachedPiece = newStart
 	c := t.newChange(pos)
 	c.new = newSpan(newStart, newEnd)
 	c.old = newSpan(start, end)

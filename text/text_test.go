@@ -69,6 +69,29 @@ func TestCacheInsertAndDelete(t *testing.T) {
 	txt.checkContent(t, "testing cached insertation")
 }
 
+func TestSimulateBackspace(t *testing.T) {
+	txt := New([]byte("apples and oranges"))
+	for i := 5; i > 0; i-- {
+		txt.cacheDelete(i, 1)
+	}
+	txt.checkContent(t, "a and oranges")
+	txt.Undo()
+	txt.checkContent(t, "apples and oranges")
+}
+
+func TestSimulateDeleteKey(t *testing.T) {
+	txt := New([]byte("apples and oranges"))
+	txt.printPieces()
+	for i := 0; i < 4; i++ {
+		txt.cacheDelete(7, 1)
+		txt.printPieces()
+	}
+	txt.checkContent(t, "apples oranges")
+	txt.Undo()
+	txt.printPieces()
+	txt.checkContent(t, "apples and oranges")
+}
+
 func TestDelete(t *testing.T) {
 	txt := New([]byte("and what is a dream?"))
 	txt.insertString(9, "exactly ")
