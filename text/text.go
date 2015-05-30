@@ -471,6 +471,9 @@ func (r *Reader) ReadAt(data []byte, off int64) (n int, err error) {
 		off -= int64(p.len())
 	}
 	if p == nil {
+		if off == 0 {
+			return 0, io.EOF
+		}
 		return 0, ErrWrongPos
 	}
 
