@@ -81,14 +81,11 @@ func TestSimulateBackspace(t *testing.T) {
 
 func TestSimulateDeleteKey(t *testing.T) {
 	txt := New([]byte("apples and oranges"))
-	txt.printPieces()
 	for i := 0; i < 4; i++ {
 		txt.cacheDelete(7, 1)
-		txt.printPieces()
 	}
 	txt.checkContent(t, "apples oranges")
 	txt.Undo()
-	txt.printPieces()
 	txt.checkContent(t, "apples and oranges")
 }
 
@@ -148,34 +145,44 @@ func TestGroupChanges(t *testing.T) {
 func TestSaving(t *testing.T) {
 	txt := New(nil)
 
-	txt.checkModified(t, false)
+	txt.checkModified(t, 1, false)
 	txt.insertString(0, "stars can frighten")
-	txt.checkModified(t, true)
+	txt.checkModified(t, 2, true)
 
 	txt.Save()
-	txt.checkModified(t, false)
+	txt.checkModified(t, 3, false)
+
+	txt.Undo()
+	txt.checkModified(t, 4, true)
+	txt.Redo()
+	txt.checkModified(t, 5, false)
 
 	txt.insertString(0, "Neptun, Titan, ")
-	txt.checkModified(t, true)
+	txt.checkModified(t, 6, true)
 	txt.Undo()
-	txt.checkModified(t, false)
+	txt.checkModified(t, 7, false)
 
 	txt.Redo()
-	txt.checkModified(t, true)
+	txt.checkModified(t, 8, true)
 
 	txt.Save()
-	txt.checkModified(t, false)
+	txt.checkModified(t, 9, false)
 
 	txt = New([]byte("my book is closed"))
-	txt.checkModified(t, false)
+	txt.checkModified(t, 10, false)
 
 	txt.insertString(17, ", I read no more")
-	txt.checkModified(t, true)
+	txt.checkModified(t, 11, true)
 	txt.Undo()
-	txt.checkModified(t, false)
+	txt.checkModified(t, 12, false)
 
+	txt.Redo()
 	txt.Save()
-	txt.checkModified(t, false)
+	txt.checkModified(t, 13, false)
+
+	txt.Undo()
+	txt.Save()
+	txt.checkModified(t, 14, false)
 }
 
 func TestReader(t *testing.T) {
@@ -261,12 +268,12 @@ func (t *Text) printPieces() {
 	fmt.Println()
 }
 
-func (txt *Text) checkModified(t *testing.T, expected bool) {
+func (txt *Text) checkModified(t *testing.T, id int, expected bool) {
 	if txt.Modified() != expected {
 		if expected {
-			t.Errorf("text should be modified")
+			t.Errorf("#%d should be modified", id)
 		} else {
-			t.Errorf("text should not be modified")
+			t.Errorf("#%d should not be modified", id)
 		}
 	}
 }

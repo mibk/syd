@@ -462,13 +462,16 @@ func (t *Text) CommitChanges() {
 func (t *Text) Save() {
 	if t.head > 0 {
 		t.savedAction = t.actions[t.head-1]
+	} else {
+		t.savedAction = nil
 	}
 }
 
 // Modified reports whether the current state of t is different from the one
 // in the time of calling Save.
 func (t *Text) Modified() bool {
-	return t.head > 0 && t.savedAction != t.actions[t.head-1]
+	return t.head == 0 && t.savedAction != nil ||
+		t.head > 0 && t.savedAction != t.actions[t.head-1]
 }
 
 func (t *Text) GetReader() *Reader {
