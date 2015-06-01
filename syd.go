@@ -12,7 +12,10 @@ import (
 	"github.com/mibk/syd/third_party/github.com/edsrzf/mmap-go"
 )
 
-var ui console.Console
+var (
+	ui       console.Console
+	filename = "[No Name]"
+)
 
 func main() {
 	ui.Init()
@@ -20,7 +23,8 @@ func main() {
 
 	var initContent []byte
 	if len(os.Args) > 1 {
-		m, err := readFile(os.Args[1])
+		filename = os.Args[1]
+		m, err := readFile(filename)
 		if err != nil {
 			panic(err)
 		}
@@ -52,6 +56,8 @@ func normalMode(v *view.View, t *text.Text) {
 Loop:
 	for {
 		v.Draw(ui)
+		printFoot(t)
+		ui.Flush()
 		ev := event.PollEvent()
 		switch ev := ev.(type) {
 		case event.KeyPress:
@@ -84,7 +90,8 @@ Loop:
 func insertMode(v *view.View, t *text.Text) {
 	for {
 		_, h := ui.Size()
-		print(5, h-2, "-- INSERT --")
+		printFoot(t)
+		print(0, h-1, "-- INSERT --", console.AttrBold)
 		ui.Flush()
 		ev := event.PollEvent()
 		switch ev := ev.(type) {
@@ -117,9 +124,21 @@ func insertMode(v *view.View, t *text.Text) {
 	}
 }
 
-func print(x, y int, s string) {
+func print(x, y int, s string, attrs uint8) {
 	for _, r := range []rune(s) {
-		ui.SetCell(x, y, r, true)
+		ui.SetCell(x, y, r, attrs)
 		x++
 	}
+}
+
+func printFoot(t *text.Text) {
+	w, h := ui.Size()
+	for x := 0; x < w; x++ {
+		ui.SetCell(x, h-2, ' ', console.AttrReverse|console.AttrBold)
+	}
+	filename := filename
+	if t.Modified() {
+		filename += " [+]"
+	}
+	print(0, h-2, filename, console.AttrReverse|console.AttrBold)
 }

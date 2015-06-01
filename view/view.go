@@ -129,7 +129,7 @@ func (v *View) Draw(ui console.Console) {
 
 	for y, l := range v.lines {
 		for _, cell := range l.cells {
-			ui.SetCell(cell.col, y, cell.R, false)
+			ui.SetCell(cell.col, y, cell.R, console.AttrDefault)
 		}
 	}
 	ui.Flush()

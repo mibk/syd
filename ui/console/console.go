@@ -6,6 +6,12 @@ import (
 	"github.com/mibk/syd/third_party/github.com/nsf/termbox-go"
 )
 
+const (
+	AttrDefault = 0
+	AttrReverse = 1 << iota
+	AttrBold
+)
+
 type Console struct{}
 
 func (c Console) Init() {
@@ -21,12 +27,15 @@ func (Console) SetCursor(x, y int) {
 	termbox.SetCursor(x, y)
 }
 
-func (Console) SetCell(x, y int, r rune, reverse bool) {
-	fg, bg := termbox.ColorDefault, termbox.ColorDefault
-	if reverse {
-		fg, bg = termbox.AttrReverse, termbox.AttrReverse
+func (Console) SetCell(x, y int, r rune, attrs uint8) {
+	a := termbox.ColorDefault
+	if attrs&AttrReverse == AttrReverse {
+		a |= termbox.AttrReverse
 	}
-	termbox.SetCell(x, y, r, fg, bg)
+	if attrs&AttrBold == AttrBold {
+		a |= termbox.AttrBold
+	}
+	termbox.SetCell(x, y, r, a, a)
 }
 
 func (Console) Clear() {
