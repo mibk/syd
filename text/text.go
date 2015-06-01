@@ -468,7 +468,7 @@ func (t *Text) Save() {
 // Modified reports whether the current state of t is different from the one
 // in the time of calling Save.
 func (t *Text) Modified() bool {
-	return t.head > 0 && t.savedAction == t.actions[t.head-1]
+	return t.head > 0 && t.savedAction != t.actions[t.head-1]
 }
 
 func (t *Text) GetReader() *Reader {

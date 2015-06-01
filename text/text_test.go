@@ -145,7 +145,7 @@ func TestGroupChanges(t *testing.T) {
 	txt.checkContent(t, "1, 2, 3")
 }
 
-func TextSaving(t *testing.T) {
+func TestSaving(t *testing.T) {
 	txt := New(nil)
 
 	txt.checkModified(t, false)
