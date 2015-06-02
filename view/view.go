@@ -132,7 +132,6 @@ func (v *View) Draw(ui console.Console) {
 			ui.SetCell(cell.col, y, cell.R, console.AttrDefault)
 		}
 	}
-	ui.Flush()
 }
 
 func (v *View) CurrentCell() Cell {

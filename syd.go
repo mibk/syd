@@ -15,6 +15,9 @@ import (
 var (
 	ui       console.Console
 	filename = "[No Name]"
+
+	t *text.Text
+	v *view.View
 )
 
 func main() {
@@ -34,9 +37,9 @@ func main() {
 		initContent = []byte("\n")
 	}
 
-	t := text.New(initContent)
-	v := view.New(t.GetReader())
-	normalMode(v, t)
+	t = text.New(initContent)
+	v = view.New(t.GetReader())
+	normalMode()
 }
 
 func readFile(filename string) (mmap.MMap, error) {
@@ -52,11 +55,11 @@ func readFile(filename string) (mmap.MMap, error) {
 	return m, nil
 }
 
-func normalMode(v *view.View, t *text.Text) {
+func normalMode() {
 Loop:
 	for {
 		v.Draw(ui)
-		printFoot(t)
+		printFoot()
 		ui.Flush()
 		ev := event.PollEvent()
 		switch ev := ev.(type) {
@@ -80,17 +83,20 @@ Loop:
 				}
 
 			case 'i':
-				insertMode(v, t)
+				insertMode()
+			case ':':
+				commandMode()
 			}
 
 		}
 	}
 }
 
-func insertMode(v *view.View, t *text.Text) {
+func insertMode() {
 	for {
+		v.Draw(ui)
 		_, h := ui.Size()
-		printFoot(t)
+		printFoot()
 		print(0, h-1, "-- INSERT --", console.AttrBold)
 		ui.Flush()
 		ev := event.PollEvent()
@@ -120,7 +126,45 @@ func insertMode(v *view.View, t *text.Text) {
 				v.MoveRight()
 			}
 		}
+	}
+}
+
+func commandMode() {
+	cmd := make([]rune, 0, 20)
+	cur := 0
+Loop:
+	for {
 		v.Draw(ui)
+		printFoot()
+		_, h := ui.Size()
+		print(0, h-1, ":"+string(cmd), console.AttrDefault)
+		ui.SetCursor(cur+1, h-1)
+		ui.Flush()
+		ev := event.PollEvent()
+		switch ev := ev.(type) {
+		case event.KeyPress:
+			switch ev.Key {
+			case event.Escape:
+				return
+			case event.Backspace:
+				if cur > 0 {
+					cur--
+					cmd = cmd[:cur]
+				}
+			case event.Enter:
+				break Loop
+			default:
+				cmd = append(cmd, rune(ev.Key))
+				cur++
+			}
+		}
+	}
+	exec(string(cmd))
+}
+
+func exec(cmd string) {
+	if cmd == "w" {
+		t.Save()
 	}
 }
 
@@ -131,7 +175,7 @@ func print(x, y int, s string, attrs uint8) {
 	}
 }
 
-func printFoot(t *text.Text) {
+func printFoot() {
 	w, h := ui.Size()
 	for x := 0; x < w; x++ {
 		ui.SetCell(x, h-2, ' ', console.AttrReverse|console.AttrBold)
