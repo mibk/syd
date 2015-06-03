@@ -1,7 +1,10 @@
 package main
 
 import (
+	"io"
 	"os"
+	"regexp"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/mibk/syd/event"
@@ -14,7 +17,7 @@ import (
 
 var (
 	ui       console.Console
-	filename = "[No Name]"
+	filename = ""
 
 	t *text.Text
 	v *view.View
@@ -162,10 +165,54 @@ Loop:
 	exec(string(cmd))
 }
 
+var writeRE = regexp.MustCompile(`w( .+)?`)
+
 func exec(cmd string) {
-	if cmd == "w" {
-		t.Save()
+	if match := writeRE.FindStringSubmatch(cmd); match != nil {
+		if match[1] != "" {
+			filename = strings.Trim(match[1], " \t")
+		}
+		if filename == "" {
+			_, h := ui.Size()
+			print(0, h-1, "no filename! (press any key)", console.AttrDefault)
+			ui.Flush()
+			event.PollEvent()
+		} else {
+			if err := saveFile(filename); err != nil {
+				panic(err)
+			}
+		}
 	}
+}
+
+func saveFile(filename string) error {
+	const bufSize = 2048
+	t.Save()
+	tmpFile := filename + "~"
+	f, err := os.Create(tmpFile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	r := t.GetReader()
+	buf := make([]byte, bufSize)
+
+	for off := int64(0); ; off += bufSize {
+		n, err := r.ReadAt(buf, off)
+		if err != nil && err != io.EOF {
+			return err
+		}
+		if _, err := f.Write(buf[:n]); err != nil {
+			return err
+		}
+		if err == io.EOF {
+			break
+		}
+	}
+	if err := os.Rename(tmpFile, filename); err != nil {
+		return err
+	}
+	return nil
 }
 
 func print(x, y int, s string, attrs uint8) {
@@ -181,6 +228,9 @@ func printFoot() {
 		ui.SetCell(x, h-2, ' ', console.AttrReverse|console.AttrBold)
 	}
 	filename := filename
+	if filename == "" {
+		filename = "[No Name]"
+	}
 	if t.Modified() {
 		filename += " [+]"
 	}
