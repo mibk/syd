@@ -40,7 +40,7 @@ func main() {
 	}
 
 	t = text.New(initContent)
-	v = view.New(t.GetReader())
+	v = view.New(t)
 	normalMode()
 }
 
@@ -193,7 +193,7 @@ func saveFile(filename string) error {
 		return err
 	}
 	defer f.Close()
-	r := t.GetReader()
+	r := t
 	buf := make([]byte, bufSize)
 
 	for off := int64(0); ; off += bufSize {

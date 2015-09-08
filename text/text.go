@@ -474,16 +474,8 @@ func (t *Text) Modified() bool {
 		t.head > 0 && t.savedAction != t.actions[t.head-1]
 }
 
-func (t *Text) GetReader() *Reader {
-	return &Reader{t}
-}
-
-type Reader struct {
-	text *Text
-}
-
-func (r *Reader) ReadAt(data []byte, off int64) (n int, err error) {
-	p := r.text.begin
+func (t *Text) ReadAt(data []byte, off int64) (n int, err error) {
+	p := t.begin
 	for ; p != nil; p = p.next {
 		if off < int64(p.len()) {
 			break
