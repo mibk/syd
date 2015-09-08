@@ -2,8 +2,7 @@ package console
 
 import (
 	"github.com/mibk/syd/event"
-
-	"github.com/mibk/syd/third_party/github.com/nsf/termbox-go"
+	"github.com/nsf/termbox-go"
 )
 
 const (

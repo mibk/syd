@@ -7,12 +7,11 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/text"
 	"github.com/mibk/syd/ui/console"
 	"github.com/mibk/syd/view"
-
-	"github.com/mibk/syd/third_party/github.com/edsrzf/mmap-go"
 )
 
 var (
