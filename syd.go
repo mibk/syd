@@ -18,8 +18,8 @@ var (
 	ui       console.Console
 	filename = ""
 
-	t *text.Text
-	v *view.View
+	textBuf  *text.Text
+	viewport *view.View
 )
 
 func main() {
@@ -39,8 +39,8 @@ func main() {
 		initContent = []byte("\n")
 	}
 
-	t = text.New(initContent)
-	v = view.New(t)
+	textBuf = text.New(initContent)
+	viewport = view.New(textBuf)
 	normalMode()
 }
 
@@ -60,7 +60,7 @@ func readFile(filename string) (mmap.MMap, error) {
 func normalMode() {
 Loop:
 	for {
-		v.Draw(ui)
+		viewport.Draw(ui)
 		printFoot()
 		ui.Flush()
 		ev := event.PollEvent()
@@ -68,20 +68,20 @@ Loop:
 		case event.KeyPress:
 			switch ev.Key {
 			case 'j':
-				v.MoveDown()
+				viewport.MoveDown()
 			case 'k':
-				v.MoveUp()
+				viewport.MoveUp()
 			case 'h':
-				v.MoveLeft()
+				viewport.MoveLeft()
 			case 'l':
-				v.MoveRight()
+				viewport.MoveRight()
 			case 'q':
 				break Loop
 			case 'u':
-				t.Undo()
+				textBuf.Undo()
 			case 'r':
 				if ev.Ctrl {
-					t.Redo()
+					textBuf.Redo()
 				}
 
 			case 'i':
@@ -96,7 +96,7 @@ Loop:
 
 func insertMode() {
 	for {
-		v.Draw(ui)
+		viewport.Draw(ui)
 		_, h := ui.Size()
 		printFoot()
 		print(0, h-1, "-- INSERT --", console.AttrBold)
@@ -106,26 +106,26 @@ func insertMode() {
 		case event.KeyPress:
 			switch ev.Key {
 			case event.Escape:
-				t.CommitChanges()
+				textBuf.CommitChanges()
 				return
 			case event.Backspace:
-				v.MoveLeft()
+				viewport.MoveLeft()
 				fallthrough
 			case event.Delete:
-				c := v.CurrentCell()
+				c := viewport.CurrentCell()
 				length := utf8.RuneLen(c.R)
-				t.Delete(c.Off, length)
+				textBuf.Delete(c.Off, length)
 			case event.Enter:
-				t.Insert(v.CurrentCell().Off, []byte("\n"))
-				v.ReadLines()
-				v.MoveDown()
-				v.ToTheStartColumn()
+				textBuf.Insert(viewport.CurrentCell().Off, []byte("\n"))
+				viewport.ReadLines()
+				viewport.MoveDown()
+				viewport.ToTheStartColumn()
 			default:
 				buf := make([]byte, 4)
 				n := utf8.EncodeRune(buf, rune(ev.Key))
-				t.Insert(v.CurrentCell().Off, buf[:n])
-				v.ReadLines()
-				v.MoveRight()
+				textBuf.Insert(viewport.CurrentCell().Off, buf[:n])
+				viewport.ReadLines()
+				viewport.MoveRight()
 			}
 		}
 	}
@@ -136,7 +136,7 @@ func commandMode() {
 	cur := 0
 Loop:
 	for {
-		v.Draw(ui)
+		viewport.Draw(ui)
 		printFoot()
 		_, h := ui.Size()
 		print(0, h-1, ":"+string(cmd), console.AttrDefault)
@@ -186,18 +186,17 @@ func exec(cmd string) {
 
 func saveFile(filename string) error {
 	const bufSize = 2048
-	t.Save()
+	textBuf.Save()
 	tmpFile := filename + "~"
 	f, err := os.Create(tmpFile)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	r := t
 	buf := make([]byte, bufSize)
 
 	for off := int64(0); ; off += bufSize {
-		n, err := r.ReadAt(buf, off)
+		n, err := textBuf.ReadAt(buf, off)
 		if err != nil && err != io.EOF {
 			return err
 		}
@@ -230,7 +229,7 @@ func printFoot() {
 	if filename == "" {
 		filename = "[No Name]"
 	}
-	if t.Modified() {
+	if textBuf.Modified() {
 		filename += " [+]"
 	}
 	print(0, h-2, filename, console.AttrReverse|console.AttrBold)
