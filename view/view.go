@@ -11,6 +11,7 @@ const tabStop = 8
 
 type View struct {
 	reader io.ReaderAt
+	offset int64
 	lines  []*Line
 
 	// current line number relative to the offset
@@ -75,36 +76,56 @@ func (v *View) findColumn() {
 
 func (v *View) ReadLines() {
 	buf := make([]byte, 500)
-	n, err := v.reader.ReadAt(buf, 0)
-	if err != nil && err != io.EOF {
-		panic(err)
-	}
-	pos := 0
+	r := ReaderFrom(v.reader, v.offset)
+
+	start := 0
 	v.lines = make([]*Line, 0)
 	curLine := new(Line)
 	col := 0
+	offset := 0
+
 	for {
-		r, size := utf8.DecodeRune(buf[pos:n])
-		if r == utf8.RuneError {
+		pos := 0
+
+		// buf[:start] contains a part of the last rune from a previous
+		// decoding. So let it there to optain the whole rune. The value of
+		// n is therefore bigger by the value of start.
+		n, err := r.Read(buf[start:])
+		n += start
+		start = 0
+
+		if err == io.EOF {
 			break
-		} else if r == '\n' {
-			curLine.cells = append(curLine.cells, Cell{'\n', pos, col})
-			v.lines = append(v.lines, curLine)
-			curLine = new(Line)
-			col = 0
-		} else {
-			curLine.cells = append(curLine.cells, Cell{r, pos, col})
-			if r == '\t' {
-				w := tabStop - col%tabStop
-				if w == 0 {
-					w = tabStop
-				}
-				col += w
-			} else {
-				col++
-			}
+		} else if err != nil {
+			panic(err)
 		}
-		pos += size
+		for {
+			r, size := utf8.DecodeRune(buf[pos:n])
+			if r == utf8.RuneError {
+				// TODO: r doesn't have to be the last rune
+				copy(buf, buf[pos:n])
+				start = n - pos
+				break
+			} else if r == '\n' {
+				curLine.cells = append(curLine.cells, Cell{'\n', offset + pos, col})
+				v.lines = append(v.lines, curLine)
+				curLine = new(Line)
+				col = 0
+			} else {
+				curLine.cells = append(curLine.cells, Cell{r, offset + pos, col})
+				if r == '\t' {
+					w := tabStop - col%tabStop
+					if w == 0 {
+						w = tabStop
+					}
+					col += w
+				} else {
+					col++
+				}
+			}
+			pos += size
+		}
+		offset += pos
 	}
 	if len(curLine.cells) > 0 {
 		v.lines = append(v.lines, curLine)

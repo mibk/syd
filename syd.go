@@ -191,30 +191,13 @@ func saveFile(filename string) error {
 	if err != nil {
 		return err
 	}
-	io.Copy(f, ReaderFrom(textBuf, 0))
+	io.Copy(f, view.ReaderFrom(textBuf, 0))
 	f.Close()
 
 	if err := os.Rename(tmpFile, filename); err != nil {
 		return err
 	}
 	return nil
-}
-
-// ReaderFrom accepts an io.ReaderAt and returns the io.Reader
-// that can read from the offset to the EOF.
-func ReaderFrom(r io.ReaderAt, offset int64) io.Reader {
-	return &Reader{r, offset}
-}
-
-type Reader struct {
-	readerAt io.ReaderAt
-	off      int64
-}
-
-func (r *Reader) Read(data []byte) (n int, err error) {
-	n, err = r.readerAt.ReadAt(data, r.off)
-	r.off += int64(n)
-	return
 }
 
 func print(x, y int, s string, attrs uint8) {
