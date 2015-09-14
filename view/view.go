@@ -10,10 +10,12 @@ import (
 const tabStop = 8
 
 type View struct {
+	height int
 	reader io.ReaderAt
 	offset int64
 	lines  []*Line
 
+	firstLine int
 	// current line number relative to the offset
 	line int
 	// current cell
@@ -25,12 +27,22 @@ func New(r io.ReaderAt) *View {
 	return &View{reader: r}
 }
 
+func (v *View) SetHeight(h int) {
+	v.height = h
+}
+
 // TODO: rm
 func (v *View) ToTheStartColumn() {
 	v.cell = 0
 }
 
 func (v *View) MoveDown() {
+	if v.Line() == v.height-1 {
+		if v.line == len(v.lines)-1 {
+			return
+		}
+		v.firstLine++
+	}
 	v.line += 1
 	if v.line == len(v.lines) {
 		v.line = len(v.lines) - 1
@@ -39,6 +51,12 @@ func (v *View) MoveDown() {
 }
 
 func (v *View) MoveUp() {
+	if v.Line() == 0 {
+		if v.firstLine == 0 {
+			return
+		}
+		v.firstLine--
+	}
 	v.line -= 1
 	if v.line == -1 {
 		v.line = 0
@@ -135,9 +153,7 @@ func (v *View) ReadLines() {
 func (v *View) Draw(ui console.Console) {
 	v.ReadLines()
 	ui.Clear()
-	if v.line >= len(v.lines) {
-		v.line = len(v.lines) - 1
-	}
+
 	col := 0
 	cells := v.lines[v.line].cells
 	if len(cells) > 0 {
@@ -146,9 +162,13 @@ func (v *View) Draw(ui console.Console) {
 		}
 		col = cells[v.cell].col
 	}
-	ui.SetCursor(col, v.line)
+	ui.SetCursor(col, v.Line())
 
-	for y, l := range v.lines {
+	for y := 0; y < v.height; y++ {
+		if y+v.firstLine > len(v.lines)-1 {
+			break
+		}
+		l := v.lines[y+v.firstLine]
 		for _, cell := range l.cells {
 			ui.SetCell(cell.col, y, cell.R, console.AttrDefault)
 		}
@@ -157,6 +177,10 @@ func (v *View) Draw(ui console.Console) {
 
 func (v *View) CurrentCell() Cell {
 	return v.lines[v.line].cells[v.cell]
+}
+
+func (v *View) Line() int {
+	return v.line - v.firstLine
 }
 
 type Line struct {

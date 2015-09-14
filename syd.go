@@ -41,6 +41,8 @@ func main() {
 
 	textBuf = text.New(initContent)
 	viewport = view.New(textBuf)
+	_, h := ui.Size()
+	viewport.SetHeight(h - 2) // 2 for the footer
 	normalMode()
 }
 
