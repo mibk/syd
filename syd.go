@@ -11,6 +11,7 @@ import (
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/text"
 	"github.com/mibk/syd/ui/console"
+	"github.com/mibk/syd/vi"
 	"github.com/mibk/syd/view"
 )
 
@@ -20,6 +21,7 @@ var (
 
 	textBuf  *text.Text
 	viewport *view.View
+	parser   = vi.NewParser()
 )
 
 func main() {
@@ -43,6 +45,8 @@ func main() {
 	viewport = view.New(textBuf)
 	_, h := ui.Size()
 	viewport.SetHeight(h - 2) // 2 for the footer
+
+	performMapping()
 	normalMode()
 }
 
@@ -59,39 +63,29 @@ func readFile(filename string) (mmap.MMap, error) {
 	return m, nil
 }
 
+var shouldQuit = false
+
 func normalMode() {
-Loop:
-	for {
+	for !shouldQuit {
 		viewport.Draw(ui)
 		printFoot()
 		ui.Flush()
-		ev := event.PollEvent()
-		switch ev := ev.(type) {
-		case event.KeyPress:
-			switch ev.Key {
-			case 'j':
-				viewport.MoveDown()
-			case 'k':
-				viewport.MoveUp()
-			case 'h':
-				viewport.MoveLeft()
-			case 'l':
-				viewport.MoveRight()
-			case 'q':
-				break Loop
-			case 'u':
-				textBuf.Undo()
-			case 'r':
-				if ev.Ctrl {
-					textBuf.Redo()
+		select {
+		case ev := <-event.Events:
+			switch ev := ev.(type) {
+			case event.KeyPress:
+				switch ev.Key {
+				case 'r':
+					if ev.Ctrl {
+						textBuf.Redo()
+					}
+				default:
+					parser.Decode(rune(ev.Key))
 				}
 
-			case 'i':
-				insertMode()
-			case ':':
-				commandMode()
 			}
-
+		case a := <-parser.Actions:
+			a()
 		}
 	}
 }
@@ -173,15 +167,19 @@ func exec(cmd string) {
 		if match[1] != "" {
 			filename = strings.Trim(match[1], " \t")
 		}
-		if filename == "" {
-			_, h := ui.Size()
-			print(0, h-1, "no filename! (press any key)", console.AttrDefault)
-			ui.Flush()
-			event.PollEvent()
-		} else {
-			if err := saveFile(filename); err != nil {
-				panic(err)
-			}
+		checkAndSave()
+	}
+}
+
+func checkAndSave() {
+	if filename == "" {
+		_, h := ui.Size()
+		print(0, h-1, "no filename! (press any key)", console.AttrDefault)
+		ui.Flush()
+		event.PollEvent()
+	} else {
+		if err := saveFile(filename); err != nil {
+			panic(err)
 		}
 	}
 }

@@ -21,13 +21,13 @@ type KeyPress struct {
 	Ctrl, Alt bool
 }
 
-var events = make(chan Event, 10)
+var Events = make(chan Event, 10)
 
 func MakeEvent(ev Event) {
-	events <- ev
+	Events <- ev
 }
 
 func PollEvent() Event {
-	ev := <-events
+	ev := <-Events
 	return ev
 }
