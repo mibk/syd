@@ -74,14 +74,7 @@ func normalMode() {
 		case ev := <-event.Events:
 			switch ev := ev.(type) {
 			case event.KeyPress:
-				switch ev.Key {
-				case 'r':
-					if ev.Ctrl {
-						textBuf.Redo()
-					}
-				default:
-					parser.Decode(rune(ev.Key))
-				}
+				parser.Decode(ev)
 
 			}
 		case a := <-parser.Actions:

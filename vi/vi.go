@@ -1,6 +1,10 @@
 package vi
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/mibk/syd/event"
+)
 
 type Command struct {
 	action         func(num int)
@@ -11,28 +15,28 @@ type Motion func(num int)
 
 type commandNode struct {
 	Command
-	children map[rune]*commandNode
+	children map[event.KeyPress]*commandNode
 }
 
 func newCommandNode() *commandNode {
-	return &commandNode{children: make(map[rune]*commandNode)}
+	return &commandNode{children: make(map[event.KeyPress]*commandNode)}
 }
 
 type motionNode struct {
 	motion   Motion
-	children map[rune]*motionNode
+	children map[event.KeyPress]*motionNode
 }
 
 func newMotionNode() *motionNode {
-	return &motionNode{children: make(map[rune]*motionNode)}
+	return &motionNode{children: make(map[event.KeyPress]*motionNode)}
 }
 
 type Parser struct {
 	commandTree *commandNode
 	motionTree  *motionNode
 
-	chars   chan rune
-	peeked  *rune
+	presses chan event.KeyPress
+	peeked  *event.KeyPress
 	Actions chan func()
 }
 
@@ -40,7 +44,7 @@ func NewParser() *Parser {
 	p := &Parser{
 		commandTree: newCommandNode(),
 		motionTree:  newMotionNode(),
-		chars:       make(chan rune),
+		presses:     make(chan event.KeyPress),
 		Actions:     make(chan func()),
 	}
 	p.commandTree.requiresMotion = true
@@ -54,7 +58,7 @@ var RequiresMotion = func(c Command) Command {
 	return c
 }
 
-func (p *Parser) AddCommand(seq string, f func(num int),
+func (p *Parser) AddCommand(seq []event.KeyPress, f func(num int),
 	opts ...func(Command) Command) {
 	cmd := Command{action: f}
 	for _, opt := range opts {
@@ -62,43 +66,43 @@ func (p *Parser) AddCommand(seq string, f func(num int),
 	}
 
 	n := p.commandTree
-	for _, ch := range []rune(seq) {
-		if _, ok := n.children[ch]; !ok {
-			n.children[ch] = newCommandNode()
+	for _, k := range seq {
+		if _, ok := n.children[k]; !ok {
+			n.children[k] = newCommandNode()
 		}
-		n = n.children[ch]
+		n = n.children[k]
 	}
 	n.requiresMotion = cmd.requiresMotion
 	n.action = cmd.action
 }
 
-func (p *Parser) AddMovement(seq string, motion Motion) {
+func (p *Parser) AddMovement(seq []event.KeyPress, motion Motion) {
 	n := p.motionTree
-	for _, ch := range []rune(seq) {
-		if _, ok := n.children[ch]; !ok {
-			n.children[ch] = newMotionNode()
+	for _, k := range seq {
+		if _, ok := n.children[k]; !ok {
+			n.children[k] = newMotionNode()
 		}
-		n = n.children[ch]
+		n = n.children[k]
 	}
 	n.motion = motion
 }
 
-func (p *Parser) Decode(ch rune) {
-	p.chars <- ch
+func (p *Parser) Decode(k event.KeyPress) {
+	p.presses <- k
 }
 
-func (p *Parser) next() rune {
+func (p *Parser) next() event.KeyPress {
 	if p.peeked != nil {
 		r := *p.peeked
 		p.peeked = nil
 		return r
 	}
-	return <-p.chars
+	return <-p.presses
 }
 
-func (p *Parser) peek() rune {
+func (p *Parser) peek() event.KeyPress {
 	if p.peeked == nil {
-		r := <-p.chars
+		r := <-p.presses
 		p.peeked = &r
 	}
 	return *p.peeked
@@ -108,15 +112,15 @@ func (p *Parser) parse() {
 Loop:
 	for {
 		cnum := 0
-		ch := p.peek()
-		if ch >= '1' && ch <= '9' {
+		k := p.peek()
+		if isDigit(k) {
 			cnum = p.parseNum()
 		}
 
 		cmd := p.commandTree
 		for {
-			ch = p.peek()
-			n, ok := cmd.children[ch]
+			k = p.peek()
+			n, ok := cmd.children[k]
 			if !ok {
 				break
 			}
@@ -133,15 +137,15 @@ Loop:
 			if cmd == p.commandTree {
 				mnum = cnum
 			} else {
-				ch = p.peek()
-				if ch >= '1' && ch <= '9' {
+				k = p.peek()
+				if isDigit(k) {
 					mnum = p.parseNum()
 				}
 			}
 			motion := p.motionTree
 			for {
-				ch = p.next()
-				n, ok := motion.children[ch]
+				k = p.next()
+				n, ok := motion.children[k]
 				if !ok {
 					break
 				}
@@ -162,12 +166,16 @@ Loop:
 
 }
 
+func isDigit(k event.KeyPress) bool {
+	return k.Key >= '1' && k.Key <= '9'
+}
+
 func (p *Parser) parseNum() int {
 	digits := make([]rune, 0, 10)
 	for {
-		digits = append(digits, p.next())
-		ch := p.peek()
-		if ch < '0' || ch > '9' {
+		digits = append(digits, rune(p.next().Key))
+		k := p.peek()
+		if k.Key < '0' || k.Key > '9' {
 			break
 		}
 	}
@@ -175,14 +183,12 @@ func (p *Parser) parseNum() int {
 	return num
 }
 
-func (p *Parser) AddAlias(alias, seq string) {
+func (p *Parser) AddAlias(alias, seq []event.KeyPress) {
 	a := func(num int) {
+		// TODO: use num
 		seq := seq
-		if num != 0 {
-			seq = strconv.Itoa(num) + seq
-		}
-		for _, ch := range []rune(seq) {
-			p.Decode(ch)
+		for _, k := range seq {
+			p.Decode(k)
 		}
 	}
 	p.AddCommand(alias, a)
