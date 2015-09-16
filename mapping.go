@@ -44,6 +44,9 @@ func performMapping() {
 	parser.AddAlias(trans("0"), trans("|"))
 	parser.AddCommand(trans("$"), doOnce(gotoEOL))
 
+	parser.AddCommand([]event.KeyPress{{Key: 'f', Ctrl: true}}, vi.DoN(pageDown))
+	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
+
 	parser.AddCommand(trans("i"), doOnce(insertMode))
 	parser.AddCommand(trans(":"), doOnce(commandMode))
 	parser.AddCommand(trans("u"), vi.DoN(undo))
@@ -71,6 +74,9 @@ func gotoLine(n int) {
 }
 func gotoEOL()         { viewport.GotoColumn(view.Last) }
 func gotoColumn(n int) { viewport.GotoColumn(n - 1) }
+
+func pageDown() { viewport.SetFirstLine(viewport.FirstLine() + viewport.Height()) }
+func pageUp()   { viewport.SetFirstLine(viewport.FirstLine() - viewport.Height()) }
 
 func undo() { textBuf.Undo() }
 func redo() { textBuf.Redo() }

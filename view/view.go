@@ -22,12 +22,16 @@ type View struct {
 	firstLine int
 	line      int
 	// current cell
-	cell   int
-	maxCol int
+	cell       int
+	desiredCol int
 }
 
 func New(r io.ReaderAt) *View {
 	return &View{reader: r}
+}
+
+func (v *View) Height() int {
+	return v.height
 }
 
 func (v *View) SetHeight(h int) {
@@ -37,10 +41,8 @@ func (v *View) SetHeight(h int) {
 func (v *View) GotoLine(n int) {
 	if n == Last {
 		n = len(v.lines) - 1
-	} else if n < 0 {
-		n = 0
-	} else if n > len(v.lines)-1 {
-		n = len(v.lines) - 1
+	} else {
+		n = v.validateLineNumber(n)
 	}
 	v.line = n
 	l := v.screenLine()
@@ -52,12 +54,21 @@ func (v *View) GotoLine(n int) {
 	v.findColumn()
 }
 
+func (v *View) validateLineNumber(n int) int {
+	if n < 0 {
+		return 0
+	} else if n > len(v.lines)-1 {
+		return len(v.lines) - 1
+	}
+	return n
+}
+
 func (v *View) findColumn() {
 	cells := v.lines[v.line].cells
 	for i, c := range cells {
-		if c.column >= v.maxCol {
+		if c.column >= v.desiredCol {
 			v.cell = i
-			if c.column > v.maxCol {
+			if c.column > v.desiredCol {
 				v.cell--
 			}
 			return
@@ -83,11 +94,24 @@ func (v *View) GotoColumn(n int) {
 		n = len(v.lines[v.line].cells) - 1
 	}
 	v.cell = n
-	v.maxCol = v.CurrentCell().column
+	v.desiredCol = v.CurrentCell().column
 }
 
 func (v *View) Column() int {
 	return v.cell
+}
+
+func (v *View) FirstLine() int {
+	return v.firstLine
+}
+
+func (v *View) SetFirstLine(n int) {
+	n = v.validateLineNumber(n)
+	l := v.screenLine()
+	v.firstLine = n
+	v.line = n + l
+	v.line = v.validateLineNumber(v.line)
+	v.findColumn()
 }
 
 func (v *View) ReadLines() {
