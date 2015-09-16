@@ -40,6 +40,9 @@ func performMapping() {
 
 	parser.AddMovement(trans("G"), gotoLine)
 	parser.AddAlias(trans("gg"), trans("1G"))
+	parser.AddMovement(trans("|"), gotoColumn)
+	parser.AddAlias(trans("0"), trans("|"))
+	parser.AddCommand(trans("$"), doOnce(gotoEOL))
 
 	parser.AddCommand(trans("i"), doOnce(insertMode))
 	parser.AddCommand(trans(":"), doOnce(commandMode))
@@ -55,17 +58,19 @@ func saveAndQuit() { checkAndSave(); quit() }
 
 func down()  { viewport.GotoLine(viewport.Line() + 1) }
 func up()    { viewport.GotoLine(viewport.Line() - 1) }
-func left()  { viewport.MoveLeft() }
-func right() { viewport.MoveRight() }
+func right() { viewport.GotoColumn(viewport.Column() + 1) }
+func left()  { viewport.GotoColumn(viewport.Column() - 1) }
 
 func gotoLine(n int) {
 	if n == 0 {
-		n = view.LastLine
+		n = view.Last
 	} else {
 		n--
 	}
 	viewport.GotoLine(n)
 }
+func gotoEOL()         { viewport.GotoColumn(view.Last) }
+func gotoColumn(n int) { viewport.GotoColumn(n - 1) }
 
 func undo() { textBuf.Undo() }
 func redo() { textBuf.Redo() }

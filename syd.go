@@ -98,7 +98,7 @@ func insertMode() {
 				textBuf.CommitChanges()
 				return
 			case event.Backspace:
-				viewport.MoveLeft()
+				viewport.GotoColumn(viewport.Column() - 1)
 				fallthrough
 			case event.Delete:
 				c := viewport.CurrentCell()
@@ -108,13 +108,13 @@ func insertMode() {
 				textBuf.Insert(viewport.CurrentCell().Offset, []byte("\n"))
 				viewport.ReadLines()
 				viewport.GotoLine(viewport.Line() + 1)
-				viewport.ToTheStartColumn()
+				viewport.GotoColumn(0)
 			default:
 				buf := make([]byte, 4)
 				n := utf8.EncodeRune(buf, rune(ev.Key))
 				textBuf.Insert(viewport.CurrentCell().Offset, buf[:n])
 				viewport.ReadLines()
-				viewport.MoveRight()
+				viewport.GotoColumn(viewport.Column() + 1)
 			}
 		}
 	}

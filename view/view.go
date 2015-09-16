@@ -7,6 +7,10 @@ import (
 	"github.com/mibk/syd/ui/console"
 )
 
+// Last is used to denote for example last line
+// or last column.
+const Last = -2
+
 const tabStop = 8
 
 type View struct {
@@ -30,15 +34,8 @@ func (v *View) SetHeight(h int) {
 	v.height = h
 }
 
-// TODO: rm
-func (v *View) ToTheStartColumn() {
-	v.cell = 0
-}
-
-const LastLine = -2
-
 func (v *View) GotoLine(n int) {
-	if n == LastLine {
+	if n == Last {
 		n = len(v.lines) - 1
 	} else if n < 0 {
 		n = 0
@@ -55,28 +52,6 @@ func (v *View) GotoLine(n int) {
 	v.findColumn()
 }
 
-func (v *View) Line() int {
-	return v.line
-}
-
-func (v *View) screenLine() int {
-	return v.line - v.firstLine
-}
-
-func (v *View) MoveLeft() {
-	if v.cell != 0 {
-		v.cell -= 1
-		v.maxCol = v.CurrentCell().column
-	}
-}
-
-func (v *View) MoveRight() {
-	if v.cell < len(v.lines[v.line].cells)-1 {
-		v.cell += 1
-		v.maxCol = v.CurrentCell().column
-	}
-}
-
 func (v *View) findColumn() {
 	cells := v.lines[v.line].cells
 	for i, c := range cells {
@@ -89,6 +64,30 @@ func (v *View) findColumn() {
 		}
 	}
 	v.cell = len(cells) - 1
+}
+
+func (v *View) Line() int {
+	return v.line
+}
+
+func (v *View) screenLine() int {
+	return v.line - v.firstLine
+}
+
+func (v *View) GotoColumn(n int) {
+	if n == Last {
+		n = len(v.lines[v.line].cells) - 1
+	} else if n < 0 {
+		n = 0
+	} else if n > len(v.lines[v.line].cells)-1 {
+		n = len(v.lines[v.line].cells) - 1
+	}
+	v.cell = n
+	v.maxCol = v.CurrentCell().column
+}
+
+func (v *View) Column() int {
+	return v.cell
 }
 
 func (v *View) ReadLines() {
