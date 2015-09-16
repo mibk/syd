@@ -1,6 +1,8 @@
 package main
 
 import (
+	"unicode/utf8"
+
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/vi"
 	"github.com/mibk/syd/view"
@@ -9,6 +11,13 @@ import (
 func doOnce(f func()) func(int) {
 	return func(_ int) {
 		f()
+	}
+}
+
+func doNAndCommit(f func()) func(int) {
+	return func(n int) {
+		vi.DoN(f)(n)
+		textBuf.CommitChanges()
 	}
 }
 
@@ -36,6 +45,9 @@ func performMapping() {
 	parser.AddCommand(trans(":"), doOnce(commandMode))
 	parser.AddCommand(trans("u"), vi.DoN(undo))
 	parser.AddCommand([]event.KeyPress{{Key: 'r', Ctrl: true}}, vi.DoN(redo))
+
+	parser.AddCommand(trans("x"), doNAndCommit(deleteRune))
+	parser.AddAlias(trans("X"), trans("hx"))
 }
 
 func quit()        { shouldQuit = true }
@@ -57,3 +69,9 @@ func gotoLine(n int) {
 
 func undo() { textBuf.Undo() }
 func redo() { textBuf.Redo() }
+
+func deleteRune() {
+	c := viewport.CurrentCell()
+	l := utf8.RuneLen(c.Rune)
+	textBuf.Delete(c.Offset, l)
+}

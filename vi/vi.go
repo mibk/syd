@@ -45,7 +45,11 @@ func NewParser() *Parser {
 		commandTree: newCommandNode(),
 		motionTree:  newMotionNode(),
 		presses:     make(chan event.KeyPress),
-		Actions:     make(chan func()),
+
+		// Make it a buffered channel because of aliases.
+		// TODO: Decide whether it is a good solution and
+		//       forbid recursive aliases.
+		Actions: make(chan func(), 2),
 	}
 	p.commandTree.requiresMotion = true
 
