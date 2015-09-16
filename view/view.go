@@ -16,8 +16,7 @@ type View struct {
 	lines  []*Line
 
 	firstLine int
-	// current line number relative to the offset
-	line int
+	line      int
 	// current cell
 	cell   int
 	maxCol int
@@ -36,54 +35,54 @@ func (v *View) ToTheStartColumn() {
 	v.cell = 0
 }
 
-func (v *View) MoveDown() {
-	if v.Line() == v.height-1 {
-		if v.line == len(v.lines)-1 {
-			return
-		}
-		v.firstLine++
+const LastLine = -2
+
+func (v *View) GotoLine(n int) {
+	if n == LastLine {
+		n = len(v.lines) - 1
+	} else if n < 0 {
+		n = 0
+	} else if n > len(v.lines)-1 {
+		n = len(v.lines) - 1
 	}
-	v.line += 1
-	if v.line == len(v.lines) {
-		v.line = len(v.lines) - 1
+	v.line = n
+	l := v.screenLine()
+	if l < 0 {
+		v.firstLine += l
+	} else if l > v.height-1 {
+		v.firstLine += l - (v.height - 1)
 	}
 	v.findColumn()
 }
 
-func (v *View) MoveUp() {
-	if v.Line() == 0 {
-		if v.firstLine == 0 {
-			return
-		}
-		v.firstLine--
-	}
-	v.line -= 1
-	if v.line == -1 {
-		v.line = 0
-	}
-	v.findColumn()
+func (v *View) Line() int {
+	return v.line
+}
+
+func (v *View) screenLine() int {
+	return v.line - v.firstLine
 }
 
 func (v *View) MoveLeft() {
 	if v.cell != 0 {
 		v.cell -= 1
-		v.maxCol = v.CurrentCell().col
+		v.maxCol = v.CurrentCell().column
 	}
 }
 
 func (v *View) MoveRight() {
 	if v.cell < len(v.lines[v.line].cells)-1 {
 		v.cell += 1
-		v.maxCol = v.CurrentCell().col
+		v.maxCol = v.CurrentCell().column
 	}
 }
 
 func (v *View) findColumn() {
 	cells := v.lines[v.line].cells
 	for i, c := range cells {
-		if c.col >= v.maxCol {
+		if c.column >= v.maxCol {
 			v.cell = i
-			if c.col > v.maxCol {
+			if c.column > v.maxCol {
 				v.cell--
 			}
 			return
@@ -160,9 +159,9 @@ func (v *View) Draw(ui console.Console) {
 		if v.cell >= len(cells) {
 			v.cell = len(cells) - 1
 		}
-		col = cells[v.cell].col
+		col = cells[v.cell].column
 	}
-	ui.SetCursor(col, v.Line())
+	ui.SetCursor(col, v.screenLine())
 
 	for y := 0; y < v.height; y++ {
 		if y+v.firstLine > len(v.lines)-1 {
@@ -170,7 +169,7 @@ func (v *View) Draw(ui console.Console) {
 		}
 		l := v.lines[y+v.firstLine]
 		for _, cell := range l.cells {
-			ui.SetCell(cell.col, y, cell.R, console.AttrDefault)
+			ui.SetCell(cell.column, y, cell.Rune, console.AttrDefault)
 		}
 	}
 }
@@ -179,16 +178,12 @@ func (v *View) CurrentCell() Cell {
 	return v.lines[v.line].cells[v.cell]
 }
 
-func (v *View) Line() int {
-	return v.line - v.firstLine
-}
-
 type Line struct {
 	cells []Cell
 }
 
 type Cell struct {
-	R   rune
-	Off int
-	col int
+	Rune   rune
+	Offset int
+	column int
 }

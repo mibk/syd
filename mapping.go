@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/vi"
+	"github.com/mibk/syd/view"
 )
 
 func doOnce(f func()) func(int) {
@@ -28,9 +29,8 @@ func performMapping() {
 	parser.AddMovement(trans("h"), vi.DoN(left))
 	parser.AddMovement(trans("l"), vi.DoN(right))
 
-	// ugly hack for the moment
-	parser.AddAlias(trans("gg"), trans("1000k"))
-	parser.AddAlias(trans("G"), trans("1000j"))
+	parser.AddMovement(trans("G"), gotoLine)
+	parser.AddAlias(trans("gg"), trans("1G"))
 
 	parser.AddCommand(trans("i"), doOnce(insertMode))
 	parser.AddCommand(trans(":"), doOnce(commandMode))
@@ -41,10 +41,19 @@ func performMapping() {
 func quit()        { shouldQuit = true }
 func saveAndQuit() { checkAndSave(); quit() }
 
-func down()  { viewport.MoveDown() }
-func up()    { viewport.MoveUp() }
+func down()  { viewport.GotoLine(viewport.Line() + 1) }
+func up()    { viewport.GotoLine(viewport.Line() - 1) }
 func left()  { viewport.MoveLeft() }
 func right() { viewport.MoveRight() }
+
+func gotoLine(n int) {
+	if n == 0 {
+		n = view.LastLine
+	} else {
+		n--
+	}
+	viewport.GotoLine(n)
+}
 
 func undo() { textBuf.Undo() }
 func redo() { textBuf.Redo() }

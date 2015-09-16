@@ -102,17 +102,17 @@ func insertMode() {
 				fallthrough
 			case event.Delete:
 				c := viewport.CurrentCell()
-				length := utf8.RuneLen(c.R)
-				textBuf.Delete(c.Off, length)
+				length := utf8.RuneLen(c.Rune)
+				textBuf.Delete(c.Offset, length)
 			case event.Enter:
-				textBuf.Insert(viewport.CurrentCell().Off, []byte("\n"))
+				textBuf.Insert(viewport.CurrentCell().Offset, []byte("\n"))
 				viewport.ReadLines()
-				viewport.MoveDown()
+				viewport.GotoLine(viewport.Line() + 1)
 				viewport.ToTheStartColumn()
 			default:
 				buf := make([]byte, 4)
 				n := utf8.EncodeRune(buf, rune(ev.Key))
-				textBuf.Insert(viewport.CurrentCell().Off, buf[:n])
+				textBuf.Insert(viewport.CurrentCell().Offset, buf[:n])
 				viewport.ReadLines()
 				viewport.MoveRight()
 			}
