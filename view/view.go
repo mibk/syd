@@ -7,8 +7,7 @@ import (
 	"github.com/mibk/syd/ui/console"
 )
 
-// Last is used to denote for example last line
-// or last column.
+// Last is used to denote for example last line or last column.
 const Last = -2
 
 const tabStop = 8
@@ -114,6 +113,19 @@ func (v *View) SetFirstLine(n int) {
 	v.findColumn()
 }
 
+// SetCursor sets the cursor to the specified offset in the buffer.
+func (v *View) SetCursor(offset int) {
+	for line, l := range v.lines {
+		for col, c := range l.cells {
+			if c.Offset >= offset {
+				v.GotoLine(line)
+				v.GotoColumn(col)
+				return
+			}
+		}
+	}
+}
+
 func (v *View) ReadLines() {
 	buf := make([]byte, 500)
 	r := ReaderFrom(v.reader, v.offset)
@@ -175,6 +187,12 @@ func (v *View) ReadLines() {
 func (v *View) Draw(ui console.Console) {
 	v.ReadLines()
 	ui.Clear()
+
+	if v.line > len(v.lines)-1 {
+		v.line = len(v.lines) - 1
+		v.cell = len(v.lines[v.line].cells) - 1
+		v.desiredCol = v.lines[v.line].cells[v.cell].column
+	}
 
 	col := 0
 	cells := v.lines[v.line].cells

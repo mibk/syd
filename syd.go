@@ -22,7 +22,13 @@ var (
 	textBuf  *text.Text
 	viewport *view.View
 	parser   = vi.NewParser()
+
+	lastOffset int
+	isLinewise bool
 )
+
+func linewise() { isLinewise = true }
+func charwise() { isLinewise = false }
 
 func main() {
 	ui.Init()
@@ -77,8 +83,9 @@ func normalMode() {
 				parser.Decode(ev)
 
 			}
-		case a := <-parser.Actions:
-			a()
+		case action := <-parser.Actions:
+			lastOffset = viewport.CurrentCell().Offset
+			action()
 		}
 	}
 }
