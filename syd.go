@@ -27,6 +27,9 @@ var (
 	isLinewise bool
 	toRemember bool
 	lastAction func()
+
+	clipboard         []byte
+	wasCopiedLinewise bool
 )
 
 func linewise()      { isLinewise = true }

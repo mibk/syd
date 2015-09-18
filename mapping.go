@@ -80,6 +80,12 @@ func performMapping() {
 	parser.AddAlias(trans("S"), trans("c_"))
 
 	parser.AddCommand(trans("r"), replace)
+
+	parser.AddCommand(trans("y"), doOnce(yank), vi.RequiresMotion)
+	parser.AddAlias(trans("yy"), trans("y_"))
+	parser.AddAlias(trans("Y"), trans("y$"))
+	parser.AddCommand(trans("P"), doOnce(Paste))
+	parser.AddCommand(trans("p"), doOnce(paste))
 }
 
 func quit()        { shouldQuit = true }
@@ -137,19 +143,58 @@ func undo() { textBuf.Undo() }
 func redo() { textBuf.Redo() }
 
 func delete() {
-	off1 := lastOffset
-	off2 := viewport.CurrentCell().Offset
+	start, end, desiredOffset := findBorders()
+	textBuf.Delete(start, end-start)
+	viewport.SetCursor(desiredOffset)
+	lastOffset = start
+}
+
+func findBorders() (off1, off2, desiredOffset int) {
+	off1 = lastOffset
+	off2 = viewport.CurrentCell().Offset
 	if off1 > off2 {
 		off1, off2 = off2, off1
 	}
-	desiredOffset := off1
+	desiredOffset = off1
 	if isLinewise {
 		off1 = int(textutil.FindLineStart(textBuf, int64(off1)))
 		off2 = int(textutil.FindLineEnd(textBuf, int64(off2)))
 	}
-	textBuf.Delete(off1, off2-off1)
+	return
+}
+
+func yank() {
+	start, end, desiredOffset := findBorders()
+
+	clipboard = make([]byte, end-start)
+	textBuf.ReadAt(clipboard, int64(start))
+	wasCopiedLinewise = isLinewise
+
 	viewport.SetCursor(desiredOffset)
-	lastOffset = off1
+	lastOffset = start
+}
+func paste() {
+	if clipboard == nil {
+		return
+	}
+	off := lastOffset
+	if wasCopiedLinewise {
+		off = int(textutil.FindLineEnd(textBuf, int64(off)))
+		down()
+	} else {
+		right()
+	}
+	textBuf.Insert(off, clipboard)
+}
+func Paste() {
+	if clipboard == nil {
+		return
+	}
+	off := lastOffset
+	if wasCopiedLinewise {
+		off = int(textutil.FindLineStart(textBuf, int64(off)))
+	}
+	textBuf.Insert(off, clipboard)
 }
 
 func appendRight() {
