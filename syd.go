@@ -25,10 +25,13 @@ var (
 
 	lastOffset int
 	isLinewise bool
+	toRemember bool
+	lastAction func()
 )
 
-func linewise() { isLinewise = true }
-func charwise() { isLinewise = false }
+func linewise()      { isLinewise = true }
+func charwise()      { isLinewise = false }
+func doNotRemember() { toRemember = false }
 
 func main() {
 	ui.Init()
@@ -84,8 +87,12 @@ func normalMode() {
 
 			}
 		case action := <-parser.Actions:
+			toRemember = true
 			lastOffset = viewport.CurrentCell().Offset
 			action()
+			if toRemember {
+				lastAction = action
+			}
 		}
 	}
 }

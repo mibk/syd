@@ -32,6 +32,8 @@ func performMapping() {
 	parser.AddCommand(trans("ZQ"), doOnce(quit))
 	parser.AddCommand(trans("ZZ"), doOnce(saveAndQuit))
 
+	parser.AddCommand(trans("."), vi.DoN(repeatLastAction))
+
 	parser.AddMotion(trans("j"), vi.DoN(down))
 	parser.AddMotion(trans("k"), vi.DoN(up))
 	parser.AddMotion(trans("h"), vi.DoN(left))
@@ -73,6 +75,11 @@ func performMapping() {
 
 func quit()        { shouldQuit = true }
 func saveAndQuit() { checkAndSave(); quit() }
+
+func repeatLastAction() {
+	doNotRemember()
+	lastAction()
+}
 
 func down()  { viewport.GotoLine(viewport.Line() + 1); linewise() }
 func up()    { viewport.GotoLine(viewport.Line() - 1); linewise() }
