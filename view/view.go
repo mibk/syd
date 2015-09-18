@@ -44,7 +44,7 @@ func (v *View) GotoLine(n int) {
 		n = v.validateLineNumber(n)
 	}
 	v.line = n
-	l := v.screenLine()
+	l := v.ScreenLine()
 	if l < 0 {
 		v.firstLine += l
 	} else if l > v.height-1 {
@@ -80,7 +80,7 @@ func (v *View) Line() int {
 	return v.line
 }
 
-func (v *View) screenLine() int {
+func (v *View) ScreenLine() int {
 	return v.line - v.firstLine
 }
 
@@ -106,7 +106,7 @@ func (v *View) FirstLine() int {
 
 func (v *View) SetFirstLine(n int) {
 	n = v.validateLineNumber(n)
-	l := v.screenLine()
+	l := v.ScreenLine()
 	v.firstLine = n
 	v.line = n + l
 	v.line = v.validateLineNumber(v.line)
@@ -202,7 +202,7 @@ func (v *View) Draw(ui console.Console) {
 		}
 		col = cells[v.cell].column
 	}
-	ui.SetCursor(col, v.screenLine())
+	ui.SetCursor(col, v.ScreenLine())
 
 	for y := 0; y < v.height; y++ {
 		if y+v.firstLine > len(v.lines)-1 {

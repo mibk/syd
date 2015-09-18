@@ -46,6 +46,10 @@ func performMapping() {
 	parser.AddMotion(trans("$"), doOnce(gotoEOL))
 	parser.AddMotion(trans("_"), underscore)
 
+	parser.AddMotion(trans("H"), gotoScreenLineFromTop)
+	parser.AddMotion(trans("L"), gotoScreenLineFromBotton)
+	parser.AddMotion(trans("M"), doOnce(gotoMiddleScreenLine))
+
 	parser.AddCommand([]event.KeyPress{{Key: 'f', Ctrl: true}}, vi.DoN(pageDown))
 	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
 
@@ -105,6 +109,21 @@ func gotoLine(n int) {
 }
 func gotoEOL()         { viewport.GotoColumn(view.Last); charwise() }
 func gotoColumn(n int) { viewport.GotoColumn(n - 1); charwise() }
+
+func gotoScreenLineFromTop(n int) {
+	if n != 0 {
+		n--
+	}
+	viewport.GotoLine(viewport.Line() - viewport.ScreenLine() + n)
+}
+func gotoScreenLineFromBotton(n int) {
+	if n != 0 {
+		n--
+	}
+	viewport.GotoLine(viewport.Line() - viewport.ScreenLine() +
+		viewport.Height() - n - 1)
+}
+func gotoMiddleScreenLine() { gotoScreenLineFromTop(viewport.Height() / 2) }
 
 func pageDown() { viewport.SetFirstLine(viewport.FirstLine() + viewport.Height()) }
 func pageUp()   { viewport.SetFirstLine(viewport.FirstLine() - viewport.Height()) }
