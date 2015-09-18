@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"unicode/utf8"
+
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/textutil"
 	"github.com/mibk/syd/vi"
@@ -75,6 +78,8 @@ func performMapping() {
 	parser.AddAlias(trans("C"), trans("c$"))
 	parser.AddAlias(trans("s"), trans("dli"))
 	parser.AddAlias(trans("S"), trans("c_"))
+
+	parser.AddCommand(trans("r"), replace)
 }
 
 func quit()        { shouldQuit = true }
@@ -172,5 +177,20 @@ func change() {
 		openLineUp()
 	} else {
 		insertMode()
+	}
+}
+
+func replace(n int) {
+	if n == 0 {
+		n = 1
+	}
+	ev := event.PollEvent()
+	if ev, ok := ev.(event.KeyPress); ok {
+		viewport.GotoColumn(viewport.Column() + n)
+		delete()
+		p := make([]byte, 4)
+		length := utf8.EncodeRune(p, rune(ev.Key))
+		p = bytes.Repeat(p[:length], n)
+		textBuf.Insert(lastOffset, p)
 	}
 }
