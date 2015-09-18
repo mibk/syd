@@ -48,8 +48,11 @@ func performMapping() {
 	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
 
 	parser.AddCommand(trans("i"), doOnce(insertMode))
+	parser.AddCommand(trans("a"), doOnce(appendRight))
 	parser.AddCommand(trans("o"), doOnce(openLineDown))
 	parser.AddCommand(trans("O"), doOnce(openLineUp))
+	parser.AddAlias(trans("I"), trans("|i"))
+	parser.AddAlias(trans("A"), trans("$a"))
 
 	parser.AddCommand(trans(":"), doOnce(commandMode))
 	parser.AddCommand(trans("u"), vi.DoN(undo))
@@ -61,6 +64,9 @@ func performMapping() {
 	parser.AddAlias(trans("X"), trans("dh"))
 
 	parser.AddCommand(trans("c"), doNAndCommit(change), vi.RequiresMotion)
+	parser.AddAlias(trans("cc"), trans("c_"))
+	parser.AddAlias(trans("s"), trans("dli"))
+	parser.AddAlias(trans("S"), trans("c_"))
 }
 
 func quit()        { shouldQuit = true }
@@ -111,6 +117,11 @@ func delete() {
 	textBuf.Delete(off1, off2-off1)
 	viewport.SetCursor(desiredOffset)
 	lastOffset = off1
+}
+
+func appendRight() {
+	right()
+	insertMode()
 }
 
 func openLineDown() {
