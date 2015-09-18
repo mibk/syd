@@ -35,3 +35,28 @@ I just want to make sure that this line is greater than the bufSize which is 50.
 		}
 	}
 }
+
+func TestFindIndentOffset(t *testing.T) {
+	r := strings.NewReader("What's\n\tthe    ugliest  \t part of your body? \t\t")
+
+	tests := []struct {
+		off    int64
+		indent int64
+	}{
+		{0, 0},
+		{4, 4},
+		{6, 6},
+		{7, 8},
+		{11, 15},
+		{22, 26},
+		{24, 26},
+		{28, 28},
+		{44, 47},
+	}
+
+	for _, test := range tests {
+		if ind := FindIndentOffset(r, test.off); ind != test.indent {
+			t.Errorf("got %d, want %d", ind, test.indent)
+		}
+	}
+}

@@ -46,6 +46,7 @@ func performMapping() {
 	parser.AddAlias(trans("gg"), trans("1G"))
 	parser.AddMotion(trans("|"), gotoColumn)
 	parser.AddAlias(trans("0"), trans("|"))
+	parser.AddMotion(trans("^"), doOnce(gotoFirstNonBlank))
 	parser.AddMotion(trans("$"), doOnce(gotoEOL))
 	parser.AddMotion(trans("_"), underscore)
 
@@ -120,6 +121,13 @@ func gotoLine(n int) {
 }
 func gotoEOL()         { viewport.GotoColumn(view.Last); charwise() }
 func gotoColumn(n int) { viewport.GotoColumn(n - 1); charwise() }
+func gotoFirstNonBlank() {
+	off := viewport.CurrentCell().Offset
+	start := textutil.FindLineStart(textBuf, int64(off))
+	off = int(textutil.FindIndentOffset(textBuf, start))
+	viewport.SetCursor(off)
+	charwise()
+}
 
 func gotoScreenLineFromTop(n int) {
 	if n != 0 {

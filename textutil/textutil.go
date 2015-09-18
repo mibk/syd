@@ -7,6 +7,8 @@ import (
 
 const bufSize = 50
 
+// FindLineStart returns the offset of the first occurence of the \n rune
+// to the left, or 0, in the r.
 func FindLineStart(r io.ReaderAt, off int64) int64 {
 	if off <= 0 {
 		return 0
@@ -32,6 +34,8 @@ func FindLineStart(r io.ReaderAt, off int64) int64 {
 	}
 }
 
+// FindLineEnd returns the offset of the first occurence of the rune behind \n,
+// or EOF, in the r.
 func FindLineEnd(r io.ReaderAt, off int64) int64 {
 	data := make([]byte, bufSize)
 	for {
@@ -46,5 +50,29 @@ func FindLineEnd(r io.ReaderAt, off int64) int64 {
 			return off + int64(n)
 		}
 		off += bufSize
+	}
+}
+
+// FindIndent returns the offset of the first non-blank characeter from
+// the off in the r. If there is no non-blank character, the size
+// of the r is returned. Only ' ' and '\t' are considered as blank
+// characters.
+func FindIndentOffset(r io.ReaderAt, off int64) int64 {
+	data := make([]byte, bufSize)
+	ioffset := off
+	for {
+		n, err := r.ReadAt(data, off)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+		for i := 0; i < n; i++ {
+			if data[i] != ' ' && data[i] != '\t' {
+				return ioffset + int64(i)
+			}
+		}
+		ioffset += int64(n)
+		if err == io.EOF {
+			return ioffset
+		}
 	}
 }
