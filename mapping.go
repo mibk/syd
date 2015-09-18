@@ -48,6 +48,9 @@ func performMapping() {
 	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
 
 	parser.AddCommand(trans("i"), doOnce(insertMode))
+	parser.AddCommand(trans("o"), doOnce(openLineDown))
+	parser.AddCommand(trans("O"), doOnce(openLineUp))
+
 	parser.AddCommand(trans(":"), doOnce(commandMode))
 	parser.AddCommand(trans("u"), vi.DoN(undo))
 	parser.AddCommand([]event.KeyPress{{Key: 'r', Ctrl: true}}, vi.DoN(redo))
@@ -56,6 +59,8 @@ func performMapping() {
 	parser.AddAlias(trans("dd"), trans("d_"))
 	parser.AddAlias(trans("x"), trans("dl"))
 	parser.AddAlias(trans("X"), trans("dh"))
+
+	parser.AddCommand(trans("c"), doNAndCommit(change), vi.RequiresMotion)
 }
 
 func quit()        { shouldQuit = true }
@@ -105,4 +110,28 @@ func delete() {
 	}
 	textBuf.Delete(off1, off2-off1)
 	viewport.SetCursor(desiredOffset)
+	lastOffset = off1
+}
+
+func openLineDown() {
+	openLine(int(textutil.FindLineEnd(textBuf, int64(lastOffset))))
+}
+
+func openLineUp() {
+	openLine(int(textutil.FindLineStart(textBuf, int64(lastOffset))))
+}
+
+func openLine(off int) {
+	textBuf.Insert(off, []byte{'\n'})
+	viewport.SetCursor(off)
+	insertMode()
+}
+
+func change() {
+	delete()
+	if isLinewise {
+		openLineUp()
+	} else {
+		insertMode()
+	}
 }
