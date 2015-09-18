@@ -32,17 +32,17 @@ func performMapping() {
 	parser.AddCommand(trans("ZQ"), doOnce(quit))
 	parser.AddCommand(trans("ZZ"), doOnce(saveAndQuit))
 
-	parser.AddMovement(trans("j"), vi.DoN(down))
-	parser.AddMovement(trans("k"), vi.DoN(up))
-	parser.AddMovement(trans("h"), vi.DoN(left))
-	parser.AddMovement(trans("l"), vi.DoN(right))
+	parser.AddMotion(trans("j"), vi.DoN(down))
+	parser.AddMotion(trans("k"), vi.DoN(up))
+	parser.AddMotion(trans("h"), vi.DoN(left))
+	parser.AddMotion(trans("l"), vi.DoN(right))
 
-	parser.AddMovement(trans("G"), gotoLine)
+	parser.AddMotion(trans("G"), gotoLine)
 	parser.AddAlias(trans("gg"), trans("1G"))
-	parser.AddMovement(trans("|"), gotoColumn)
+	parser.AddMotion(trans("|"), gotoColumn)
 	parser.AddAlias(trans("0"), trans("|"))
-	parser.AddMovement(trans("$"), doOnce(gotoEOL))
-	parser.AddMovement(trans("_"), underscore)
+	parser.AddMotion(trans("$"), doOnce(gotoEOL))
+	parser.AddMotion(trans("_"), underscore)
 
 	parser.AddCommand([]event.KeyPress{{Key: 'f', Ctrl: true}}, vi.DoN(pageDown))
 	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
@@ -60,11 +60,13 @@ func performMapping() {
 
 	parser.AddCommand(trans("d"), doNAndCommit(delete), vi.RequiresMotion)
 	parser.AddAlias(trans("dd"), trans("d_"))
+	parser.AddAlias(trans("D"), trans("d$"))
 	parser.AddAlias(trans("x"), trans("dl"))
 	parser.AddAlias(trans("X"), trans("dh"))
 
 	parser.AddCommand(trans("c"), doNAndCommit(change), vi.RequiresMotion)
 	parser.AddAlias(trans("cc"), trans("c_"))
+	parser.AddAlias(trans("C"), trans("c$"))
 	parser.AddAlias(trans("s"), trans("dli"))
 	parser.AddAlias(trans("S"), trans("c_"))
 }

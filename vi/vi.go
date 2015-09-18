@@ -80,7 +80,7 @@ func (p *Parser) AddCommand(seq []event.KeyPress, f func(num int),
 	n.action = cmd.action
 }
 
-func (p *Parser) AddMovement(seq []event.KeyPress, motion Motion) {
+func (p *Parser) AddMotion(seq []event.KeyPress, motion Motion) {
 	n := p.motionTree
 	for _, k := range seq {
 		if _, ok := n.children[k]; !ok {
