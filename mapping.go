@@ -1,8 +1,6 @@
 package main
 
 import (
-	"unicode/utf8"
-
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/textutil"
 	"github.com/mibk/syd/vi"
@@ -44,6 +42,7 @@ func performMapping() {
 	parser.AddMovement(trans("|"), gotoColumn)
 	parser.AddAlias(trans("0"), trans("|"))
 	parser.AddMovement(trans("$"), doOnce(gotoEOL))
+	parser.AddMovement(trans("_"), underscore)
 
 	parser.AddCommand([]event.KeyPress{{Key: 'f', Ctrl: true}}, vi.DoN(pageDown))
 	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
@@ -54,8 +53,9 @@ func performMapping() {
 	parser.AddCommand([]event.KeyPress{{Key: 'r', Ctrl: true}}, vi.DoN(redo))
 
 	parser.AddCommand(trans("d"), doNAndCommit(delete), vi.RequiresMotion)
-	parser.AddCommand(trans("x"), doNAndCommit(deleteRune))
-	parser.AddAlias(trans("X"), trans("hx"))
+	parser.AddAlias(trans("dd"), trans("d_"))
+	parser.AddAlias(trans("x"), trans("dl"))
+	parser.AddAlias(trans("X"), trans("dh"))
 }
 
 func quit()        { shouldQuit = true }
@@ -65,6 +65,14 @@ func down()  { viewport.GotoLine(viewport.Line() + 1); linewise() }
 func up()    { viewport.GotoLine(viewport.Line() - 1); linewise() }
 func right() { viewport.GotoColumn(viewport.Column() + 1); charwise() }
 func left()  { viewport.GotoColumn(viewport.Column() - 1); charwise() }
+
+func underscore(n int) {
+	if n != 0 {
+		n--
+	}
+	viewport.GotoLine(viewport.Line() + n)
+	linewise()
+}
 
 func gotoLine(n int) {
 	if n == 0 {
@@ -97,10 +105,4 @@ func delete() {
 	}
 	textBuf.Delete(off1, off2-off1)
 	viewport.SetCursor(desiredOffset)
-}
-
-func deleteRune() {
-	c := viewport.CurrentCell()
-	l := utf8.RuneLen(c.Rune)
-	textBuf.Delete(c.Offset, l)
 }
