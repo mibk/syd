@@ -204,7 +204,8 @@ func (v *View) Draw(ui console.Console) {
 	}
 	ui.SetCursor(col, v.ScreenLine())
 
-	for y := 0; y < v.height; y++ {
+	y := 0
+	for ; y < v.height; y++ {
 		if y+v.firstLine > len(v.lines)-1 {
 			break
 		}
@@ -213,6 +214,10 @@ func (v *View) Draw(ui console.Console) {
 			ui.SetCell(cell.column, y, cell.Rune, console.AttrDefault)
 		}
 	}
+	for ; y < v.height; y++ {
+		ui.SetCell(0, y, '~', console.AttrDefault)
+	}
+
 }
 
 func (v *View) CurrentCell() Cell {
