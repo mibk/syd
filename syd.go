@@ -10,6 +10,7 @@ import (
 	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/text"
+	"github.com/mibk/syd/textutil"
 	"github.com/mibk/syd/ui/console"
 	"github.com/mibk/syd/vi"
 	"github.com/mibk/syd/view"
@@ -122,10 +123,15 @@ func insertMode() {
 				length := utf8.RuneLen(c.Rune)
 				textBuf.Delete(c.Offset, length)
 			case event.Enter:
-				textBuf.Insert(viewport.CurrentCell().Offset, []byte("\n"))
+				off := viewport.CurrentCell().Offset
+				start := int(textutil.FindLineStart(textBuf, int64(off)))
+				ioffset := textutil.FindIndentOffset(textBuf, int64(start))
+				b := make([]byte, int(ioffset)-start+1)
+				b[0] = '\n'
+				textBuf.ReadAt(b[1:], int64(start))
+				textBuf.Insert(off, b)
 				viewport.ReadLines()
-				viewport.GotoLine(viewport.Line() + 1)
-				viewport.GotoColumn(0)
+				viewport.SetCursor(off + len(b))
 			default:
 				buf := make([]byte, 4)
 				n := utf8.EncodeRune(buf, rune(ev.Key))

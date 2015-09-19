@@ -61,7 +61,7 @@ func performMapping() {
 	parser.AddCommand(trans("a"), doOnce(appendRight))
 	parser.AddCommand(trans("o"), doOnce(openLineDown))
 	parser.AddCommand(trans("O"), doOnce(openLineUp))
-	parser.AddAlias(trans("I"), trans("|i"))
+	parser.AddAlias(trans("I"), trans("^i"))
 	parser.AddAlias(trans("A"), trans("$a"))
 
 	parser.AddCommand(trans(":"), doOnce(commandMode))
@@ -211,16 +211,23 @@ func appendRight() {
 }
 
 func openLineDown() {
-	openLine(int(textutil.FindLineEnd(textBuf, int64(lastOffset))))
+	end := int(textutil.FindLineEnd(textBuf, int64(lastOffset)))
+	start := int(textutil.FindLineStart(textBuf, int64(lastOffset)))
+	openLine(end, start)
 }
 
 func openLineUp() {
-	openLine(int(textutil.FindLineStart(textBuf, int64(lastOffset))))
+	off := int(textutil.FindLineStart(textBuf, int64(lastOffset)))
+	openLine(off, off)
 }
 
-func openLine(off int) {
-	textBuf.Insert(off, []byte{'\n'})
-	viewport.SetCursor(off)
+func openLine(off, start int) {
+	ioffset := textutil.FindIndentOffset(textBuf, int64(start))
+	b := make([]byte, int(ioffset)-start+1)
+	textBuf.ReadAt(b[:len(b)-1], int64(start))
+	b[len(b)-1] = '\n'
+	textBuf.Insert(off, b)
+	viewport.SetCursor(off + len(b) - 1)
 	insertMode()
 }
 
