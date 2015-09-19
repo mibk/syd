@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"syscall"
 	"unicode/utf8"
 
 	"github.com/mibk/syd/event"
@@ -34,6 +35,7 @@ func trans(cmd string) []event.KeyPress {
 func performMapping() {
 	parser.AddCommand(trans("ZQ"), doOnce(quit))
 	parser.AddCommand(trans("ZZ"), doOnce(saveAndQuit))
+	parser.AddCommand([]event.KeyPress{{Key: 'z', Ctrl: true}}, doOnce(suspend))
 
 	parser.AddCommand(trans("."), vi.DoN(repeatLastAction))
 
@@ -94,6 +96,14 @@ func performMapping() {
 
 func quit()        { shouldQuit = true }
 func saveAndQuit() { checkAndSave(); quit() }
+func suspend() {
+	ui.Close()
+	defer ui.Reinit()
+	pid, tid := syscall.Getpid(), syscall.Gettid()
+	if err := syscall.Tgkill(pid, tid, syscall.SIGSTOP); err != nil {
+		panic(err)
+	}
+}
 
 func repeatLastAction() {
 	doNotRemember()
