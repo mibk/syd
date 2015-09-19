@@ -53,6 +53,9 @@ func performMapping() {
 	parser.AddMotion(trans("H"), gotoScreenLineFromTop)
 	parser.AddMotion(trans("L"), gotoScreenLineFromBotton)
 	parser.AddMotion(trans("M"), doOnce(gotoMiddleScreenLine))
+	parser.AddCommand(trans("zt"), doOnce(setScreenLineTop))
+	parser.AddCommand(trans("zz"), doOnce(setScreenLineMiddle))
+	parser.AddCommand(trans("zb"), doOnce(SetScreenLineBottom))
 
 	parser.AddCommand([]event.KeyPress{{Key: 'f', Ctrl: true}}, vi.DoN(pageDown))
 	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
@@ -143,6 +146,17 @@ func gotoScreenLineFromBotton(n int) {
 		viewport.Height() - n - 1)
 }
 func gotoMiddleScreenLine() { gotoScreenLineFromTop(viewport.Height() / 2) }
+
+func setScreenLineTop()    { setScreenLinePos(0) }
+func setScreenLineMiddle() { setScreenLinePos(viewport.Height()/2 - 1) }
+func SetScreenLineBottom() { setScreenLinePos(viewport.Height() - 1) }
+func setScreenLinePos(pos int) {
+	s := viewport.ScreenLine()
+	f := viewport.FirstLine()
+	l := viewport.Line()
+	viewport.SetFirstLine(f - (pos - s))
+	viewport.GotoLine(l)
+}
 
 func pageDown() { viewport.SetFirstLine(viewport.FirstLine() + viewport.Height()) }
 func pageUp()   { viewport.SetFirstLine(viewport.FirstLine() - viewport.Height()) }
