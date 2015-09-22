@@ -71,6 +71,13 @@
 //	| |     | exi|     |t |     | |
 //	\-+ <-- +----+ <-- +--+ <-- +-/
 //
+//
+// Changes
+//
+// Undoing and redoing works with actions (action is a group of changes: insertations
+// and deletations). An action is represented by any operations between two calls of
+// CommitChange method. Anything that happens between these two calls is a part of that
+// particular action.
 package text
 
 import (
@@ -166,8 +173,7 @@ type Text struct {
 
 	actions       []*action // stack holding all actions performed to the file
 	head          int       // index for the next action to add
-	groupChanges  bool
-	currentAction *action // action for the current change group
+	currentAction *action   // action for the current change group
 	savedAction   *action
 }
 
@@ -225,10 +231,8 @@ func (t *Text) newChange(pos int) *change {
 	a := t.currentAction
 	if a == nil {
 		a = t.newAction()
-		if t.groupChanges {
-			t.cachedPiece = nil
-			t.currentAction = a
-		}
+		t.cachedPiece = nil
+		t.currentAction = a
 	}
 	c := &change{pos: pos}
 	a.changes = append(a.changes, c)
@@ -443,17 +447,9 @@ func (t *Text) shiftAction() *action {
 	return t.actions[t.head-1]
 }
 
-// GroupChanges causes that all following changes would be a part of only
-// one action, until a CommitChanges is called. All changes of this action
-// are undone/redone together.
-func (t *Text) GroupChanges() {
-	t.groupChanges = true
-}
-
 // CommitChanges commits the current action. All following changes won't be
-// a part of this action.
+// a part of that action.
 func (t *Text) CommitChanges() {
-	t.groupChanges = false
 	t.currentAction = nil
 	t.cachedPiece = nil
 }

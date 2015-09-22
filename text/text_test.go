@@ -10,63 +10,66 @@ import (
 func TestOverall(t *testing.T) {
 	txt := New(nil)
 	txt.checkPiecesCnt(t, 2)
-	txt.checkContent(t, "")
+	txt.checkContent("#0", t, "")
 
 	txt.insertString(0, "")
 	txt.checkPiecesCnt(t, 2)
-	txt.checkContent(t, "")
+	txt.checkContent("#1", t, "")
 
 	txt.insertString(0, "All work makes John a dull boy")
 	txt.checkPiecesCnt(t, 3)
-	txt.checkContent(t, "All work makes John a dull boy")
+	txt.checkContent("#2", t, "All work makes John a dull boy")
 
 	txt.insertString(9, "and no playing ")
 	txt.checkPiecesCnt(t, 6)
-	txt.checkContent(t, "All work and no playing makes John a dull boy")
+	txt.checkContent("#3", t, "All work and no playing makes John a dull boy")
 
+	txt.CommitChanges()
+	// Also check that multiple change commits don't create empty changes.
+	txt.CommitChanges()
 	txt.Delete(20, 14)
-	txt.checkContent(t, "All work and no play a dull boy")
+	txt.checkContent("#4", t, "All work and no play a dull boy")
 
 	txt.insertString(20, " makes Jack")
-	txt.checkContent(t, "All work and no play makes Jack a dull boy")
+	txt.checkContent("#5", t, "All work and no play makes Jack a dull boy")
 
 	txt.Undo()
-	txt.checkContent(t, "All work and no play a dull boy")
+	txt.checkContent("#6", t, "All work and no play a dull boy")
 	txt.Undo()
-	txt.checkContent(t, "All work and no playing makes John a dull boy")
+	txt.checkContent("#7", t, "All work and no playing makes John a dull boy")
 	txt.Undo()
-	txt.checkContent(t, "All work makes John a dull boy")
+	txt.checkContent("#8", t, "All work makes John a dull boy")
 
 	txt.Redo()
-	txt.checkContent(t, "All work and no playing makes John a dull boy")
+	txt.checkContent("#9", t, "All work and no playing makes John a dull boy")
 	txt.Redo()
-	txt.checkContent(t, "All work and no play a dull boy")
+	txt.checkContent("#10", t, "All work and no play a dull boy")
 	txt.Redo()
-	txt.checkContent(t, "All work and no play makes Jack a dull boy")
+	txt.checkContent("#11", t, "All work and no play makes Jack a dull boy")
 	txt.Redo()
-	txt.checkContent(t, "All work and no play makes Jack a dull boy")
+	txt.checkContent("#12", t, "All work and no play makes Jack a dull boy")
 }
 
 func TestCacheInsertAndDelete(t *testing.T) {
 	txt := New([]byte("testing insertation"))
 	txt.checkPiecesCnt(t, 3)
-	txt.checkContent(t, "testing insertation")
+	txt.checkContent("#0", t, "testing insertation")
 
 	txt.cacheInsertString(8, "caching")
 	txt.checkPiecesCnt(t, 6)
-	txt.checkContent(t, "testing cachinginsertation")
+	txt.checkContent("#1", t, "testing cachinginsertation")
 
 	txt.cacheInsertString(15, " ")
 	txt.checkPiecesCnt(t, 6)
-	txt.checkContent(t, "testing caching insertation")
+	txt.checkContent("#2", t, "testing caching insertation")
 
 	txt.cacheDelete(12, 3)
 	txt.checkPiecesCnt(t, 6)
-	txt.checkContent(t, "testing cach insertation")
+	txt.checkContent("#3", t, "testing cach insertation")
 
 	txt.cacheInsertString(12, "ed")
 	txt.checkPiecesCnt(t, 6)
-	txt.checkContent(t, "testing cached insertation")
+	txt.checkContent("#4", t, "testing cached insertation")
 }
 
 func TestSimulateBackspace(t *testing.T) {
@@ -74,9 +77,9 @@ func TestSimulateBackspace(t *testing.T) {
 	for i := 5; i > 0; i-- {
 		txt.cacheDelete(i, 1)
 	}
-	txt.checkContent(t, "a and oranges")
+	txt.checkContent("#0", t, "a and oranges")
 	txt.Undo()
-	txt.checkContent(t, "apples and oranges")
+	txt.checkContent("#1", t, "apples and oranges")
 }
 
 func TestSimulateDeleteKey(t *testing.T) {
@@ -84,20 +87,20 @@ func TestSimulateDeleteKey(t *testing.T) {
 	for i := 0; i < 4; i++ {
 		txt.cacheDelete(7, 1)
 	}
-	txt.checkContent(t, "apples oranges")
+	txt.checkContent("#0", t, "apples oranges")
 	txt.Undo()
-	txt.checkContent(t, "apples and oranges")
+	txt.checkContent("#1", t, "apples and oranges")
 }
 
 func TestDelete(t *testing.T) {
 	txt := New([]byte("and what is a dream?"))
 	txt.insertString(9, "exactly ")
-	txt.checkContent(t, "and what exactly is a dream?")
+	txt.checkContent("#0", t, "and what exactly is a dream?")
 
 	txt.delete(22, 2000)
-	txt.checkContent(t, "and what exactly is a ")
+	txt.checkContent("#1", t, "and what exactly is a ")
 	txt.insertString(22, "joke?")
-	txt.checkContent(t, "and what exactly is a joke?")
+	txt.checkContent("#2", t, "and what exactly is a joke?")
 
 	cases := []struct {
 		pos, len int
@@ -111,35 +114,35 @@ func TestDelete(t *testing.T) {
 	}
 	for _, c := range cases {
 		txt.delete(c.pos, c.len)
-		txt.checkContent(t, c.expected)
+		txt.checkContent("#3", t, c.expected)
 		txt.Undo()
-		txt.checkContent(t, "and what exactly is a joke?")
+		txt.checkContent("#4", t, "and what exactly is a joke?")
 	}
 }
 
 func TestGroupChanges(t *testing.T) {
 	txt := New([]byte("group 1, group 2, group 3"))
 	txt.checkPiecesCnt(t, 3)
-	txt.GroupChanges()
+	// txt.GroupChanges()
 
 	txt.cacheDelete(0, 6)
-	txt.checkContent(t, "1, group 2, group 3")
+	txt.checkContent("#0", t, "1, group 2, group 3")
 
 	txt.cacheDelete(3, 6)
-	txt.checkContent(t, "1, 2, group 3")
+	txt.checkContent("#1", t, "1, 2, group 3")
 
 	txt.cacheDelete(6, 6)
-	txt.checkContent(t, "1, 2, 3")
+	txt.checkContent("#2", t, "1, 2, 3")
 
 	txt.Undo()
-	txt.checkContent(t, "group 1, group 2, group 3")
+	txt.checkContent("#3", t, "group 1, group 2, group 3")
 	txt.Undo()
-	txt.checkContent(t, "group 1, group 2, group 3")
+	txt.checkContent("#4", t, "group 1, group 2, group 3")
 
 	txt.Redo()
-	txt.checkContent(t, "1, 2, 3")
+	txt.checkContent("#5", t, "1, 2, 3")
 	txt.Redo()
-	txt.checkContent(t, "1, 2, 3")
+	txt.checkContent("#6", t, "1, 2, 3")
 }
 
 func TestSaving(t *testing.T) {
@@ -191,7 +194,7 @@ func TestReader(t *testing.T) {
 	txt.insertString(7, " books,")
 	txt.insertString(14, " so little")
 	txt.insertString(24, " time.")
-	txt.checkContent(t, "So many books, so little time.")
+	txt.checkContent("#0", t, "So many books, so little time.")
 
 	cases := []struct {
 		off, len int
@@ -225,10 +228,10 @@ func (txt *Text) checkPiecesCnt(t *testing.T, expected int) {
 	}
 }
 
-func (txt *Text) checkContent(t *testing.T, expected string) {
+func (txt *Text) checkContent(name string, t *testing.T, expected string) {
 	c := txt.allContent()
 	if c != expected {
-		t.Errorf("got '%s', want '%s'", c, expected)
+		t.Errorf("%s: got '%s', want '%s'", name, c, expected)
 	}
 }
 
