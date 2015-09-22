@@ -204,10 +204,9 @@ func TestReader(t *testing.T) {
 		{15, 20, "so little time.", io.EOF},
 	}
 
-	r := txt.GetReader()
 	for _, c := range cases {
 		data := make([]byte, c.len)
-		n, err := r.ReadAt(data, int64(c.off))
+		n, err := txt.ReadAt(data, int64(c.off))
 		if err != c.err {
 			t.Errorf("expected error %v, got %v", c.err, err)
 		}
