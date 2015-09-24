@@ -21,7 +21,7 @@ var (
 	ui       console.Console
 	filename = ""
 
-	textBuf  *text.Text
+	buffer   *text.Text
 	viewport *view.View
 	parser   = vi.NewParser()
 
@@ -55,8 +55,8 @@ func main() {
 		initContent = []byte("\n")
 	}
 
-	textBuf = text.New(initContent)
-	viewport = view.New(textBuf)
+	buffer = text.New(initContent)
+	viewport = view.New(buffer)
 	_, h := ui.Size()
 	viewport.SetHeight(h - 2) // 2 for the footer
 
@@ -115,7 +115,7 @@ func insertMode() {
 			case event.KeyPress:
 				switch ev.Key {
 				case event.Escape:
-					textBuf.CommitChanges()
+					buffer.CommitChanges()
 					return
 				case event.Backspace:
 					viewport.GotoColumn(viewport.Column() - 1)
@@ -123,27 +123,27 @@ func insertMode() {
 				case event.Delete:
 					c := viewport.CurrentCell()
 					length := utf8.RuneLen(c.Rune)
-					textBuf.Delete(c.Offset, length)
+					buffer.Delete(c.Offset, length)
 				case event.Enter:
 					off := viewport.CurrentCell().Offset
-					start := int(textutil.FindLineStart(textBuf, int64(off)))
-					ioffset := textutil.FindIndentOffset(textBuf, int64(start))
+					start := int(textutil.FindLineStart(buffer, int64(off)))
+					ioffset := textutil.FindIndentOffset(buffer, int64(start))
 					b := make([]byte, int(ioffset)-start+1)
 					b[0] = '\n'
-					textBuf.ReadAt(b[1:], int64(start))
-					textBuf.Insert(off, b)
+					buffer.ReadAt(b[1:], int64(start))
+					buffer.Insert(off, b)
 					viewport.ReadLines()
 					viewport.SetCursor(off + len(b))
 				default:
 					buf := make([]byte, 4)
 					n := utf8.EncodeRune(buf, rune(ev.Key))
-					textBuf.Insert(viewport.CurrentCell().Offset, buf[:n])
+					buffer.Insert(viewport.CurrentCell().Offset, buf[:n])
 					viewport.ReadLines()
 					viewport.GotoColumn(viewport.Column() + 1)
 				}
 			}
 		case <-time.After(3 * time.Second):
-			textBuf.CommitChanges()
+			buffer.CommitChanges()
 		}
 	}
 }
@@ -206,13 +206,13 @@ func checkAndSave() {
 }
 
 func saveFile(filename string) error {
-	textBuf.Save()
+	buffer.Save()
 	tmpFile := filename + "~"
 	f, err := os.Create(tmpFile)
 	if err != nil {
 		return err
 	}
-	io.Copy(f, view.ReaderFrom(textBuf, 0))
+	io.Copy(f, textutil.ReaderFrom(buffer, 0))
 	f.Close()
 
 	if err := os.Rename(tmpFile, filename); err != nil {
@@ -237,7 +237,7 @@ func printFoot() {
 	if filename == "" {
 		filename = "[No Name]"
 	}
-	if textBuf.Modified() {
+	if buffer.Modified() {
 		filename += " [+]"
 	}
 	print(0, h-2, filename, console.AttrReverse|console.AttrBold)

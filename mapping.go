@@ -20,7 +20,7 @@ func doOnce(f func()) func(int) {
 func doNTimesAndCommit(f func()) func(int) {
 	return func(n int) {
 		vi.DoNTimes(f)(n)
-		textBuf.CommitChanges()
+		buffer.CommitChanges()
 	}
 }
 
@@ -136,8 +136,8 @@ func gotoEOL()         { viewport.GotoColumn(view.Last); charwise() }
 func gotoColumn(n int) { viewport.GotoColumn(n - 1); charwise() }
 func gotoFirstNonBlank() {
 	off := viewport.CurrentCell().Offset
-	start := textutil.FindLineStart(textBuf, int64(off))
-	off = int(textutil.FindIndentOffset(textBuf, start))
+	start := textutil.FindLineStart(buffer, int64(off))
+	off = int(textutil.FindIndentOffset(buffer, start))
 	viewport.SetCursor(off)
 	charwise()
 }
@@ -171,12 +171,12 @@ func setScreenLinePos(pos int) {
 func pageDown() { viewport.SetFirstLine(viewport.FirstLine() + viewport.Height()) }
 func pageUp()   { viewport.SetFirstLine(viewport.FirstLine() - viewport.Height()) }
 
-func undo() { textBuf.Undo() }
-func redo() { textBuf.Redo() }
+func undo() { buffer.Undo() }
+func redo() { buffer.Redo() }
 
 func delete() {
 	start, end, desiredOffset := findBorders()
-	textBuf.Delete(start, end-start)
+	buffer.Delete(start, end-start)
 	viewport.SetCursor(desiredOffset)
 	lastOffset = start
 }
@@ -189,8 +189,8 @@ func findBorders() (off1, off2, desiredOffset int) {
 	}
 	desiredOffset = off1
 	if isLinewise {
-		off1 = int(textutil.FindLineStart(textBuf, int64(off1)))
-		off2 = int(textutil.FindLineEnd(textBuf, int64(off2)))
+		off1 = int(textutil.FindLineStart(buffer, int64(off1)))
+		off2 = int(textutil.FindLineEnd(buffer, int64(off2)))
 	}
 	return
 }
@@ -199,7 +199,7 @@ func yank() {
 	start, end, desiredOffset := findBorders()
 
 	clipboard = make([]byte, end-start)
-	textBuf.ReadAt(clipboard, int64(start))
+	buffer.ReadAt(clipboard, int64(start))
 	wasCopiedLinewise = isLinewise
 
 	viewport.SetCursor(desiredOffset)
@@ -211,12 +211,12 @@ func paste() {
 	}
 	off := lastOffset
 	if wasCopiedLinewise {
-		off = int(textutil.FindLineEnd(textBuf, int64(off)))
+		off = int(textutil.FindLineEnd(buffer, int64(off)))
 		down()
 	} else {
 		right()
 	}
-	textBuf.Insert(off, clipboard)
+	buffer.Insert(off, clipboard)
 }
 func Paste() {
 	if clipboard == nil {
@@ -224,9 +224,9 @@ func Paste() {
 	}
 	off := lastOffset
 	if wasCopiedLinewise {
-		off = int(textutil.FindLineStart(textBuf, int64(off)))
+		off = int(textutil.FindLineStart(buffer, int64(off)))
 	}
-	textBuf.Insert(off, clipboard)
+	buffer.Insert(off, clipboard)
 }
 
 func appendRight() {
@@ -235,22 +235,22 @@ func appendRight() {
 }
 
 func openLineDown() {
-	end := int(textutil.FindLineEnd(textBuf, int64(lastOffset)))
-	start := int(textutil.FindLineStart(textBuf, int64(lastOffset)))
+	end := int(textutil.FindLineEnd(buffer, int64(lastOffset)))
+	start := int(textutil.FindLineStart(buffer, int64(lastOffset)))
 	openLine(end, start)
 }
 
 func openLineUp() {
-	off := int(textutil.FindLineStart(textBuf, int64(lastOffset)))
+	off := int(textutil.FindLineStart(buffer, int64(lastOffset)))
 	openLine(off, off)
 }
 
 func openLine(off, start int) {
-	ioffset := textutil.FindIndentOffset(textBuf, int64(start))
+	ioffset := textutil.FindIndentOffset(buffer, int64(start))
 	b := make([]byte, int(ioffset)-start+1)
-	textBuf.ReadAt(b[:len(b)-1], int64(start))
+	buffer.ReadAt(b[:len(b)-1], int64(start))
 	b[len(b)-1] = '\n'
-	textBuf.Insert(off, b)
+	buffer.Insert(off, b)
 	viewport.SetCursor(off + len(b) - 1)
 	insertMode()
 }
@@ -275,6 +275,6 @@ func replace(n int) {
 		p := make([]byte, 4)
 		length := utf8.EncodeRune(p, rune(ev.Key))
 		p = bytes.Repeat(p[:length], n)
-		textBuf.Insert(lastOffset, p)
+		buffer.Insert(lastOffset, p)
 	}
 }

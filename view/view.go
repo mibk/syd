@@ -4,6 +4,7 @@ import (
 	"io"
 	"unicode/utf8"
 
+	"github.com/mibk/syd/textutil"
 	"github.com/mibk/syd/ui/console"
 )
 
@@ -128,7 +129,7 @@ func (v *View) SetCursor(offset int) {
 
 func (v *View) ReadLines() {
 	buf := make([]byte, 500)
-	r := ReaderFrom(v.reader, v.offset)
+	r := textutil.ReaderFrom(v.reader, v.offset)
 
 	start := 0
 	v.lines = make([]*Line, 0)
