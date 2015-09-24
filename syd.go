@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/edsrzf/mmap-go"
@@ -108,37 +109,41 @@ func insertMode() {
 		printFoot()
 		print(0, h-1, "-- INSERT --", console.AttrBold)
 		ui.Flush()
-		ev := event.PollEvent()
-		switch ev := ev.(type) {
-		case event.KeyPress:
-			switch ev.Key {
-			case event.Escape:
-				textBuf.CommitChanges()
-				return
-			case event.Backspace:
-				viewport.GotoColumn(viewport.Column() - 1)
-				fallthrough
-			case event.Delete:
-				c := viewport.CurrentCell()
-				length := utf8.RuneLen(c.Rune)
-				textBuf.Delete(c.Offset, length)
-			case event.Enter:
-				off := viewport.CurrentCell().Offset
-				start := int(textutil.FindLineStart(textBuf, int64(off)))
-				ioffset := textutil.FindIndentOffset(textBuf, int64(start))
-				b := make([]byte, int(ioffset)-start+1)
-				b[0] = '\n'
-				textBuf.ReadAt(b[1:], int64(start))
-				textBuf.Insert(off, b)
-				viewport.ReadLines()
-				viewport.SetCursor(off + len(b))
-			default:
-				buf := make([]byte, 4)
-				n := utf8.EncodeRune(buf, rune(ev.Key))
-				textBuf.Insert(viewport.CurrentCell().Offset, buf[:n])
-				viewport.ReadLines()
-				viewport.GotoColumn(viewport.Column() + 1)
+		select {
+		case ev := <-event.Events:
+			switch ev := ev.(type) {
+			case event.KeyPress:
+				switch ev.Key {
+				case event.Escape:
+					textBuf.CommitChanges()
+					return
+				case event.Backspace:
+					viewport.GotoColumn(viewport.Column() - 1)
+					fallthrough
+				case event.Delete:
+					c := viewport.CurrentCell()
+					length := utf8.RuneLen(c.Rune)
+					textBuf.Delete(c.Offset, length)
+				case event.Enter:
+					off := viewport.CurrentCell().Offset
+					start := int(textutil.FindLineStart(textBuf, int64(off)))
+					ioffset := textutil.FindIndentOffset(textBuf, int64(start))
+					b := make([]byte, int(ioffset)-start+1)
+					b[0] = '\n'
+					textBuf.ReadAt(b[1:], int64(start))
+					textBuf.Insert(off, b)
+					viewport.ReadLines()
+					viewport.SetCursor(off + len(b))
+				default:
+					buf := make([]byte, 4)
+					n := utf8.EncodeRune(buf, rune(ev.Key))
+					textBuf.Insert(viewport.CurrentCell().Offset, buf[:n])
+					viewport.ReadLines()
+					viewport.GotoColumn(viewport.Column() + 1)
+				}
 			}
+		case <-time.After(3 * time.Second):
+			textBuf.CommitChanges()
 		}
 	}
 }
