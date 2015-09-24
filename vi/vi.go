@@ -198,7 +198,7 @@ func (p *Parser) AddAlias(alias, seq []event.KeyPress) {
 	p.AddCommand(alias, a)
 }
 
-func DoN(f func()) func(num int) {
+func DoNTimes(f func()) func(num int) {
 	return func(num int) {
 		if num == 0 {
 			num = 1

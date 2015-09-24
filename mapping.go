@@ -17,9 +17,9 @@ func doOnce(f func()) func(int) {
 	}
 }
 
-func doNAndCommit(f func()) func(int) {
+func doNTimesAndCommit(f func()) func(int) {
 	return func(n int) {
-		vi.DoN(f)(n)
+		vi.DoNTimes(f)(n)
 		textBuf.CommitChanges()
 	}
 }
@@ -37,12 +37,12 @@ func performMapping() {
 	parser.AddCommand(trans("ZZ"), doOnce(saveAndQuit))
 	parser.AddCommand([]event.KeyPress{{Key: 'z', Ctrl: true}}, doOnce(suspend))
 
-	parser.AddCommand(trans("."), vi.DoN(repeatLastAction))
+	parser.AddCommand(trans("."), vi.DoNTimes(repeatLastAction))
 
-	parser.AddMotion(trans("j"), vi.DoN(down))
-	parser.AddMotion(trans("k"), vi.DoN(up))
-	parser.AddMotion(trans("h"), vi.DoN(left))
-	parser.AddMotion(trans("l"), vi.DoN(right))
+	parser.AddMotion(trans("j"), vi.DoNTimes(down))
+	parser.AddMotion(trans("k"), vi.DoNTimes(up))
+	parser.AddMotion(trans("h"), vi.DoNTimes(left))
+	parser.AddMotion(trans("l"), vi.DoNTimes(right))
 
 	parser.AddMotion(trans("G"), gotoLine)
 	parser.AddAlias(trans("gg"), trans("1G"))
@@ -59,8 +59,8 @@ func performMapping() {
 	parser.AddCommand(trans("zz"), doOnce(setScreenLineMiddle))
 	parser.AddCommand(trans("zb"), doOnce(SetScreenLineBottom))
 
-	parser.AddCommand([]event.KeyPress{{Key: 'f', Ctrl: true}}, vi.DoN(pageDown))
-	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoN(pageUp))
+	parser.AddCommand([]event.KeyPress{{Key: 'f', Ctrl: true}}, vi.DoNTimes(pageDown))
+	parser.AddCommand([]event.KeyPress{{Key: 'b', Ctrl: true}}, vi.DoNTimes(pageUp))
 
 	parser.AddCommand(trans("i"), doOnce(insertMode))
 	parser.AddCommand(trans("a"), doOnce(appendRight))
@@ -70,16 +70,16 @@ func performMapping() {
 	parser.AddAlias(trans("A"), trans("$a"))
 
 	parser.AddCommand(trans(":"), doOnce(commandMode))
-	parser.AddCommand(trans("u"), vi.DoN(undo))
-	parser.AddCommand([]event.KeyPress{{Key: 'r', Ctrl: true}}, vi.DoN(redo))
+	parser.AddCommand(trans("u"), vi.DoNTimes(undo))
+	parser.AddCommand([]event.KeyPress{{Key: 'r', Ctrl: true}}, vi.DoNTimes(redo))
 
-	parser.AddCommand(trans("d"), doNAndCommit(delete), vi.RequiresMotion)
+	parser.AddCommand(trans("d"), doNTimesAndCommit(delete), vi.RequiresMotion)
 	parser.AddAlias(trans("dd"), trans("d_"))
 	parser.AddAlias(trans("D"), trans("d$"))
 	parser.AddAlias(trans("x"), trans("dl"))
 	parser.AddAlias(trans("X"), trans("dh"))
 
-	parser.AddCommand(trans("c"), doNAndCommit(change), vi.RequiresMotion)
+	parser.AddCommand(trans("c"), doNTimesAndCommit(change), vi.RequiresMotion)
 	parser.AddAlias(trans("cc"), trans("c_"))
 	parser.AddAlias(trans("C"), trans("c$"))
 	parser.AddAlias(trans("s"), trans("dli"))
