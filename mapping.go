@@ -90,8 +90,8 @@ func performMapping() {
 	parser.AddCommand(trans("y"), doOnce(yank), vi.RequiresMotion)
 	parser.AddAlias(trans("yy"), trans("y_"))
 	parser.AddAlias(trans("Y"), trans("y$"))
-	parser.AddCommand(trans("P"), doOnce(Paste))
-	parser.AddCommand(trans("p"), doOnce(paste))
+	parser.AddCommand(trans("P"), doNTimesAndCommit(Paste))
+	parser.AddCommand(trans("p"), doNTimesAndCommit(paste))
 }
 
 func quit()        { shouldQuit = true }
