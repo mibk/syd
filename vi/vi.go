@@ -47,8 +47,6 @@ func NewParser() *Parser {
 		presses:     make(chan event.KeyPress),
 
 		// Make it a buffered channel because of aliases.
-		// TODO: Decide whether it is a good solution and
-		//       forbid recursive aliases.
 		Actions: make(chan func(), 2),
 	}
 	p.commandTree.requiresMotion = true
@@ -189,13 +187,36 @@ func (p *Parser) parseNum() int {
 
 func (p *Parser) AddAlias(alias, seq []event.KeyPress) {
 	a := func(num int) {
-		// TODO: use num
 		seq := seq
+		if num != 0 {
+			for _, k := range numToKeyPresses(num) {
+				p.Decode(k)
+			}
+			min := event.Key('1')
+			for i, k := range seq {
+				if k.Ctrl == false && k.Alt == false &&
+					k.Key >= min && k.Key <= '9' {
+					min = '0'
+					continue
+				}
+				seq = seq[i:]
+				break
+			}
+		}
 		for _, k := range seq {
 			p.Decode(k)
 		}
 	}
 	p.AddCommand(alias, a)
+}
+
+func numToKeyPresses(n int) []event.KeyPress {
+	a := strconv.Itoa(n)
+	keys := make([]event.KeyPress, 0, len(a))
+	for _, d := range a {
+		keys = append(keys, event.KeyPress{Key: event.Key(d)})
+	}
+	return keys
 }
 
 func DoNTimes(f func()) func(num int) {
