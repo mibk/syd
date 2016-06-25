@@ -152,14 +152,23 @@ func gotoScreenLineFromBotton(n int) {
 	if n != 0 {
 		n--
 	}
-	viewport.GotoLine(viewport.Line() - viewport.ScreenLine() +
-		viewport.Height() - n - 1)
+	_, h := viewport.Size()
+	viewport.GotoLine(viewport.Line() - viewport.ScreenLine() + h - n - 1)
 }
-func gotoMiddleScreenLine() { gotoScreenLineFromTop(viewport.Height() / 2) }
+func gotoMiddleScreenLine() {
+	_, h := viewport.Size()
+	gotoScreenLineFromTop(h / 2)
+}
 
-func setScreenLineTop()    { setScreenLinePos(0) }
-func setScreenLineMiddle() { setScreenLinePos(viewport.Height()/2 - 1) }
-func SetScreenLineBottom() { setScreenLinePos(viewport.Height() - 1) }
+func setScreenLineTop() { setScreenLinePos(0) }
+func setScreenLineMiddle() {
+	_, h := viewport.Size()
+	setScreenLinePos(h/2 - 1)
+}
+func SetScreenLineBottom() {
+	_, h := viewport.Size()
+	setScreenLinePos(h - 1)
+}
 func setScreenLinePos(pos int) {
 	s := viewport.ScreenLine()
 	f := viewport.FirstLine()
@@ -168,8 +177,14 @@ func setScreenLinePos(pos int) {
 	viewport.GotoLine(l)
 }
 
-func pageDown() { viewport.SetFirstLine(viewport.FirstLine() + viewport.Height()) }
-func pageUp()   { viewport.SetFirstLine(viewport.FirstLine() - viewport.Height()) }
+func pageDown() {
+	_, h := viewport.Size()
+	viewport.SetFirstLine(viewport.FirstLine() + h)
+}
+func pageUp() {
+	_, h := viewport.Size()
+	viewport.SetFirstLine(viewport.FirstLine() - h)
+}
 
 func undo() { buffer.Undo() }
 func redo() { buffer.Redo() }

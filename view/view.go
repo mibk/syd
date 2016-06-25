@@ -14,6 +14,7 @@ const Last = -2
 const tabStop = 8
 
 type View struct {
+	width  int
 	height int
 	reader io.ReaderAt
 	offset int64
@@ -30,12 +31,14 @@ func New(r io.ReaderAt) *View {
 	return &View{reader: r}
 }
 
-func (v *View) Height() int {
-	return v.height
+// Size returns the size of v.
+func (v *View) Size() (int, int) {
+	return v.height, v.width
 }
 
-func (v *View) SetHeight(h int) {
-	v.height = h
+// SetSize sets the size of v.
+func (v *View) SetSize(w, h int) {
+	v.width, v.height = w, h
 }
 
 func (v *View) GotoLine(n int) {

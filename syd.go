@@ -57,8 +57,8 @@ func main() {
 
 	buffer = text.New(initContent)
 	viewport = view.New(buffer)
-	_, h := ui.Size()
-	viewport.SetHeight(h - 2) // 2 for the footer
+	w, h := ui.Size()
+	viewport.SetSize(w, h-2) // 2 for the footer
 
 	performMapping()
 	normalMode()
