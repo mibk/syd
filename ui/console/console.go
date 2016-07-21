@@ -14,12 +14,8 @@ const (
 type Console struct{}
 
 func (c Console) Init() {
-	c.Reinit()
-	go c.translateEvents()
-}
-
-func (c Console) Reinit() {
 	termbox.Init()
+	go c.translateEvents()
 }
 
 func (Console) Close() {
