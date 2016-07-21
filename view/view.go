@@ -2,33 +2,32 @@ package view
 
 import (
 	"io"
-	"unicode/utf8"
 
-	"github.com/mibk/syd/textutil"
+	"github.com/mibk/syd/core"
+	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/ui/console"
 )
-
-// Last is used to denote for example last line or last column.
-const Last = -2
 
 const tabStop = 8
 
 type View struct {
 	width  int
 	height int
-	reader io.ReaderAt
-	offset int64
-	lines  []*Line
+	buf    *core.Buffer
 
-	firstLine int
-	line      int
-	// current cell
-	cell       int
-	desiredCol int
+	origin int64
+	q0, q1 int64
+
+	// Frame
+	lines       [][]rune
+	line0, col0 int
+	line1, col1 int
+	wantCol     int
+	nchars      int
 }
 
-func New(r io.ReaderAt) *View {
-	return &View{reader: r}
+func New(buf *core.Buffer) *View {
+	return &View{buf: buf}
 }
 
 // Size returns the size of v.
@@ -41,199 +40,217 @@ func (v *View) SetSize(w, h int) {
 	v.width, v.height = w, h
 }
 
-func (v *View) GotoLine(n int) {
-	if n == Last {
-		n = len(v.lines) - 1
-	} else {
-		n = v.validateLineNumber(n)
-	}
-	v.line = n
-	l := v.ScreenLine()
-	if l < 0 {
-		v.firstLine += l
-	} else if l > v.height-1 {
-		v.firstLine += l - (v.height - 1)
-	}
-	v.findColumn()
-}
-
-func (v *View) validateLineNumber(n int) int {
-	if n < 0 {
-		return 0
-	} else if n > len(v.lines)-1 {
-		return len(v.lines) - 1
-	}
-	return n
-}
-
-func (v *View) findColumn() {
-	cells := v.lines[v.line].cells
-	for i, c := range cells {
-		if c.column >= v.desiredCol {
-			v.cell = i
-			if c.column > v.desiredCol {
-				v.cell--
-			}
-			return
+func (v *View) Render(ui console.Console) {
+	setCursor := func(x, y int) {
+		ui.SetCursor(x, y)
+		v.line0, v.line1 = y, y
+		v.col0, v.col1 = x, x
+		if v.wantCol == -1 {
+			v.wantCol = x
 		}
 	}
-	v.cell = len(cells) - 1
-}
-
-func (v *View) Line() int {
-	return v.line
-}
-
-func (v *View) ScreenLine() int {
-	return v.line - v.firstLine
-}
-
-func (v *View) GotoColumn(n int) {
-	if n == Last {
-		n = len(v.lines[v.line].cells) - 1
-	} else if n < 0 {
-		n = 0
-	} else if n > len(v.lines[v.line].cells)-1 {
-		n = len(v.lines[v.line].cells) - 1
-	}
-	v.cell = n
-	v.desiredCol = v.CurrentCell().column
-}
-
-func (v *View) Column() int {
-	return v.cell
-}
-
-func (v *View) FirstLine() int {
-	return v.firstLine
-}
-
-func (v *View) SetFirstLine(n int) {
-	n = v.validateLineNumber(n)
-	l := v.ScreenLine()
-	v.firstLine = n
-	v.line = n + l
-	v.line = v.validateLineNumber(v.line)
-	v.findColumn()
-}
-
-// SetCursor sets the cursor to the specified offset in the buffer.
-func (v *View) SetCursor(offset int) {
-	for line, l := range v.lines {
-		for col, c := range l.cells {
-			if c.Offset >= offset {
-				v.GotoLine(line)
-				v.GotoColumn(col)
-				return
+	v.loadText()
+	ui.SetCursor(-1, -1)
+	ui.Clear()
+	p := v.origin
+	for y, l := range v.lines {
+		x := 0
+		for _, r := range l {
+			ui.SetCell(x, y, r, console.AttrDefault)
+			if p == v.q0 {
+				setCursor(x, y)
+			}
+			p++
+			if r == '\t' {
+				x += tabWidthForCol(x)
+			} else {
+				x++
 			}
 		}
+		if p == v.q0 {
+			setCursor(x, y)
+		}
+		p++
 	}
 }
 
-func (v *View) ReadLines() {
-	buf := make([]byte, 500)
-	r := textutil.ReaderFrom(v.reader, v.offset)
-
-	start := 0
-	v.lines = make([]*Line, 0)
-	curLine := new(Line)
-	col := 0
-	offset := 0
-
-	for {
-		pos := 0
-
-		// buf[:start] contains a part of the last rune from a previous
-		// decoding. So let it there to optain the whole rune. The value of
-		// n is therefore bigger by the value of start.
-		n, err := r.Read(buf[start:])
-		n += start
-		start = 0
-
+func (v *View) loadText() {
+	v.lines = nil
+	x, y := 0, 0
+	p := v.origin
+	for ; ; p++ {
+		if len(v.lines) <= y {
+			v.lines = append(v.lines, nil)
+		}
+		r, _, err := v.buf.ReadRuneAt(p)
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			panic(err)
 		}
-		for {
-			r, size := utf8.DecodeRune(buf[pos:n])
-			if r == utf8.RuneError {
-				// TODO: r doesn't have to be the last rune
-				copy(buf, buf[pos:n])
-				start = n - pos
+		if r != '\n' {
+			v.lines[y] = append(v.lines[y], r)
+		}
+
+		if x >= v.width || r == '\n' {
+			y++
+			x = 0
+			if y == v.height {
 				break
-			} else if r == '\n' {
-				curLine.cells = append(curLine.cells, Cell{'\n', offset + pos, col})
-				v.lines = append(v.lines, curLine)
-				curLine = new(Line)
-				col = 0
-			} else {
-				curLine.cells = append(curLine.cells, Cell{r, offset + pos, col})
-				if r == '\t' {
-					w := tabStop - col%tabStop
-					if w == 0 {
-						w = tabStop
-					}
-					col += w
-				} else {
-					col++
-				}
 			}
-			pos += size
+		} else if r == '\t' {
+			x += tabWidthForCol(x)
+		} else {
+			x++
 		}
-		offset += pos
 	}
-	if len(curLine.cells) > 0 {
-		v.lines = append(v.lines, curLine)
+	v.nchars = int(p - v.origin)
+}
+
+func tabWidthForCol(col int) int {
+	w := tabStop - col%tabStop
+	if w == 0 {
+		return tabStop
+	}
+	return w
+}
+
+func (v *View) Type(ev event.KeyPress) {
+	switch {
+	case ev.Key == event.Escape:
+	case ev.Key == event.Backspace:
+		if v.q0 == 0 {
+			return
+		}
+		v.q0, v.q1 = v.q0-1, v.q0-1
+		fallthrough
+	case ev.Key == event.Delete:
+		v.buf.Delete(v.q0, v.q0+1)
+		v.checkVisibility()
+	case ev.Key == event.Left:
+		if v.q0 == 0 {
+			return
+		}
+		v.q0, v.q1 = v.q0-1, v.q0-1
+		v.wantCol = -1
+		v.checkVisibility()
+	case ev.Key == event.Right:
+		v.q0, v.q1 = v.q0+1, v.q0+1
+		v.wantCol = -1
+		if v.q0 > v.origin+int64(v.nchars) {
+			oldOrg := v.origin
+			v.origin = v.nextNewLine(3)
+			v.loadText()
+			if v.q0 > v.origin+int64(v.nchars) {
+				// There's no more content, get back.
+				v.origin = oldOrg
+				v.q0, v.q1 = v.q0-1, v.q0-1
+				v.loadText()
+			}
+		}
+		v.checkVisibility()
+	case ev.Key == event.Up:
+		q := v.findQ(v.line0-1, v.wantCol)
+		v.q0, v.q1 = q, q
+	case ev.Key == event.Down:
+		q := v.findQ(v.line1+1, v.wantCol)
+		v.q0, v.q1 = q, q
+
+	// Temporary shortcuts:
+	case ev.Key == 'z' && ev.Ctrl:
+		v.buf.Undo()
+	case ev.Key == 'y' && ev.Ctrl:
+		v.buf.Redo()
+	case ev.Key == event.PageUp:
+		v.origin = v.prevNewLine(v.origin, v.height)
+	case ev.Key == event.PageDown:
+		v.origin = v.origin + int64(v.nchars)
+
+	default:
+		v.buf.Insert(v.q0, string(ev.Key))
+		v.q0, v.q1 = v.q0+1, v.q0+1
+		v.wantCol = -1
+		v.checkVisibility()
 	}
 }
 
-func (v *View) Draw(ui console.Console) {
-	v.ReadLines()
-	ui.Clear()
-
-	if v.line > len(v.lines)-1 {
-		v.line = len(v.lines) - 1
-		v.cell = len(v.lines[v.line].cells) - 1
-		v.desiredCol = v.lines[v.line].cells[v.cell].column
+func (v *View) checkVisibility() {
+	if v.q0 < v.origin || v.q0 > v.origin+int64(v.nchars)+1 {
+		v.origin = v.prevNewLine(v.q0, 3)
 	}
-
-	col := 0
-	cells := v.lines[v.line].cells
-	if len(cells) > 0 {
-		if v.cell >= len(cells) {
-			v.cell = len(cells) - 1
-		}
-		col = cells[v.cell].column
-	}
-	ui.SetCursor(col, v.ScreenLine())
-
-	y := 0
-	for ; y < v.height; y++ {
-		if y+v.firstLine > len(v.lines)-1 {
-			break
-		}
-		l := v.lines[y+v.firstLine]
-		for _, cell := range l.cells {
-			ui.SetCell(cell.column, y, cell.Rune, console.AttrDefault)
-		}
-	}
-	for ; y < v.height; y++ {
-		ui.SetCell(0, y, '~', console.AttrDefault)
-	}
-
 }
 
-func (v *View) CurrentCell() Cell {
-	return v.lines[v.line].cells[v.cell]
+func (v *View) prevNewLine(p int64, n int) int64 {
+	for ; n > 0; n-- {
+		// Shorten long lines. After 128 characters call it a line anyway.
+		for i := 0; i < 128 && p > 0; i++ {
+			p--
+			if p == 0 {
+				return 0
+			}
+			r, _, err := v.buf.ReadRuneAt(p - 1)
+			if err != nil {
+				panic(err)
+			}
+			if r == '\n' {
+				break
+			}
+		}
+	}
+	return p
 }
 
-type Line struct {
-	cells []Cell
+func (v *View) nextNewLine(n int) int64 {
+	c := 0
+	for _, l := range v.lines {
+		c += len(l) + 1 // + '\n'
+		n--
+		if n == 0 {
+			goto NotLastLine
+		}
+	}
+	c-- // last line doesn't contain '\n'
+NotLastLine:
+	return v.origin + int64(c)
 }
 
-type Cell struct {
-	Rune   rune
-	Offset int
-	column int
+func (v *View) findQ(line, col int) int64 {
+	if line < 0 {
+		v.origin = v.prevNewLine(v.origin, -line)
+		v.loadText()
+		line = 0
+	} else if line > len(v.lines)-1 {
+		if len(v.lines) == v.height {
+			i := line - len(v.lines) + 1
+			oldOrg := v.origin
+			l := len(v.lines)
+			v.origin = v.nextNewLine(i)
+			v.loadText()
+			if len(v.lines) < l {
+				v.origin = oldOrg
+				v.loadText()
+			}
+		}
+		line = len(v.lines) - 1
+	}
+	q := v.origin
+	for n, l := range v.lines {
+		if n < line {
+			q += int64(len(l)) + 1 // + '\n'
+			continue
+		}
+		x := 0
+		for i, r := range v.lines[n] {
+			if r == '\t' {
+				x += tabWidthForCol(x)
+			} else {
+				x += 1
+			}
+			if x > col {
+				return q + int64(i)
+			}
+		}
+		return q + int64(len(v.lines[n]))
+	}
+	panic("shouldn't happen")
 }

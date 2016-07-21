@@ -12,6 +12,9 @@ const (
 	Down  = 0x2193
 	Left  = 0x2190
 	Right = 0x2192
+
+	PageUp   = 0x2188
+	PageDown = 0x2189
 )
 
 type Event interface{}

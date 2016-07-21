@@ -1,19 +1,14 @@
 package main
 
 import (
-	"io"
 	"os"
-	"regexp"
-	"strings"
 	"time"
-	"unicode/utf8"
 
 	"github.com/edsrzf/mmap-go"
+	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/event"
 	"github.com/mibk/syd/text"
-	"github.com/mibk/syd/textutil"
 	"github.com/mibk/syd/ui/console"
-	"github.com/mibk/syd/vi"
 	"github.com/mibk/syd/view"
 )
 
@@ -23,26 +18,13 @@ var (
 
 	buffer   *text.Text
 	viewport *view.View
-	parser   = vi.NewParser()
-
-	lastOffset int
-	isLinewise bool
-	toRemember bool
-	lastAction func()
-
-	clipboard         []byte
-	wasCopiedLinewise bool
 )
-
-func linewise()      { isLinewise = true }
-func charwise()      { isLinewise = false }
-func doNotRemember() { toRemember = false }
 
 func main() {
 	ui.Init()
 	defer ui.Close()
 
-	var initContent []byte
+	var b []byte
 	if len(os.Args) > 1 {
 		filename = os.Args[1]
 		m, err := readFile(filename)
@@ -50,18 +32,11 @@ func main() {
 			panic(err)
 		}
 		defer m.Unmap()
-		initContent = []byte(m)
-	} else {
-		initContent = []byte("\n")
+		b = []byte(m)
 	}
-
-	buffer = text.New(initContent)
-	viewport = view.New(buffer)
-	w, h := ui.Size()
-	viewport.SetSize(w, h-2) // 2 for the footer
-
-	performMapping()
-	normalMode()
+	buffer = text.New(b)
+	viewport = view.New(core.NewBuffer(buffer))
+	insertMode()
 }
 
 func readFile(filename string) (mmap.MMap, error) {
@@ -77,35 +52,11 @@ func readFile(filename string) (mmap.MMap, error) {
 	return m, nil
 }
 
-var shouldQuit = false
-
-func normalMode() {
-	for !shouldQuit {
-		viewport.Draw(ui)
-		printFoot()
-		ui.Flush()
-		select {
-		case ev := <-event.Events:
-			switch ev := ev.(type) {
-			case event.KeyPress:
-				parser.Decode(ev)
-
-			}
-		case action := <-parser.Actions:
-			toRemember = true
-			lastOffset = viewport.CurrentCell().Offset
-			action()
-			if toRemember {
-				lastAction = action
-			}
-		}
-	}
-}
-
 func insertMode() {
 	for {
-		viewport.Draw(ui)
-		_, h := ui.Size()
+		w, h := ui.Size()
+		viewport.SetSize(w, h-2) // 2 for the footer
+		viewport.Render(ui)
 		printFoot()
 		print(0, h-1, "-- INSERT --", console.AttrBold)
 		ui.Flush()
@@ -113,112 +64,15 @@ func insertMode() {
 		case ev := <-event.Events:
 			switch ev := ev.(type) {
 			case event.KeyPress:
-				switch ev.Key {
-				case event.Escape:
-					buffer.CommitChanges()
+				if ev.Key == 'x' && ev.Ctrl {
 					return
-				case event.Backspace:
-					viewport.GotoColumn(viewport.Column() - 1)
-					fallthrough
-				case event.Delete:
-					c := viewport.CurrentCell()
-					length := utf8.RuneLen(c.Rune)
-					buffer.Delete(c.Offset, length)
-				case event.Enter:
-					off := viewport.CurrentCell().Offset
-					start := int(textutil.FindLineStart(buffer, int64(off)))
-					ioffset := textutil.FindIndentOffset(buffer, int64(start))
-					b := make([]byte, int(ioffset)-start+1)
-					b[0] = '\n'
-					buffer.ReadAt(b[1:], int64(start))
-					buffer.Insert(off, b)
-					viewport.ReadLines()
-					viewport.SetCursor(off + len(b))
-				default:
-					buf := make([]byte, 4)
-					n := utf8.EncodeRune(buf, rune(ev.Key))
-					buffer.Insert(viewport.CurrentCell().Offset, buf[:n])
-					viewport.ReadLines()
-					viewport.GotoColumn(viewport.Column() + 1)
 				}
+				viewport.Type(ev)
 			}
 		case <-time.After(3 * time.Second):
 			buffer.CommitChanges()
 		}
 	}
-}
-
-func commandMode() {
-	cmd := make([]rune, 0, 20)
-	cur := 0
-Loop:
-	for {
-		viewport.Draw(ui)
-		printFoot()
-		_, h := ui.Size()
-		print(0, h-1, ":"+string(cmd), console.AttrDefault)
-		ui.SetCursor(cur+1, h-1)
-		ui.Flush()
-		ev := event.PollEvent()
-		switch ev := ev.(type) {
-		case event.KeyPress:
-			switch ev.Key {
-			case event.Escape:
-				return
-			case event.Backspace:
-				if cur > 0 {
-					cur--
-					cmd = cmd[:cur]
-				}
-			case event.Enter:
-				break Loop
-			default:
-				cmd = append(cmd, rune(ev.Key))
-				cur++
-			}
-		}
-	}
-	exec(string(cmd))
-}
-
-var writeRE = regexp.MustCompile(`w( .+)?`)
-
-func exec(cmd string) {
-	if match := writeRE.FindStringSubmatch(cmd); match != nil {
-		if match[1] != "" {
-			filename = strings.Trim(match[1], " \t")
-		}
-		checkAndSave()
-	}
-}
-
-func checkAndSave() {
-	if filename == "" {
-		_, h := ui.Size()
-		print(0, h-1, "no filename! (press any key)", console.AttrDefault)
-		ui.Flush()
-		event.PollEvent()
-	} else {
-		if err := saveFile(filename); err != nil {
-			panic(err)
-		}
-	}
-}
-
-func saveFile(filename string) error {
-	buffer.Save()
-	tmpFile := filename + "~"
-	f, err := os.Create(tmpFile)
-	if err != nil {
-		return err
-	}
-	io.Copy(f, textutil.ReaderFrom(buffer, 0))
-	f.Close()
-
-	if err := os.Rename(tmpFile, filename); err != nil {
-		return err
-	}
-	return nil
 }
 
 func print(x, y int, s string, attrs uint8) {

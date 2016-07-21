@@ -128,6 +128,20 @@ Loop:
 				case termbox.KeyEsc:
 					outEv = event.KeyPress{Key: event.Escape}
 
+				case termbox.KeyArrowLeft:
+					outEv = event.KeyPress{Key: event.Left}
+				case termbox.KeyArrowRight:
+					outEv = event.KeyPress{Key: event.Right}
+				case termbox.KeyArrowUp:
+					outEv = event.KeyPress{Key: event.Up}
+				case termbox.KeyArrowDown:
+					outEv = event.KeyPress{Key: event.Down}
+
+				case termbox.KeyPgup:
+					outEv = event.KeyPress{Key: event.PageUp}
+				case termbox.KeyPgdn:
+					outEv = event.KeyPress{Key: event.PageDown}
+
 				default:
 					continue Loop
 				}
