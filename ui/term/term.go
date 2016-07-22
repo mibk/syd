@@ -1,4 +1,4 @@
-package console
+package term
 
 import (
 	"github.com/mibk/syd/event"
@@ -11,22 +11,22 @@ const (
 	AttrBold
 )
 
-type Console struct{}
+type UI struct{}
 
-func (c Console) Init() {
+func (ui UI) Init() {
 	termbox.Init()
-	go c.translateEvents()
+	go ui.translateEvents()
 }
 
-func (Console) Close() {
+func (UI) Close() {
 	termbox.Close()
 }
 
-func (Console) SetCursor(x, y int) {
+func (UI) SetCursor(x, y int) {
 	termbox.SetCursor(x, y)
 }
 
-func (Console) SetCell(x, y int, r rune, attrs uint8) {
+func (UI) SetCell(x, y int, r rune, attrs uint8) {
 	a := termbox.ColorDefault
 	if attrs&AttrReverse == AttrReverse {
 		a |= termbox.AttrReverse
@@ -37,19 +37,19 @@ func (Console) SetCell(x, y int, r rune, attrs uint8) {
 	termbox.SetCell(x, y, r, a, a)
 }
 
-func (Console) Clear() {
+func (UI) Clear() {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 }
 
-func (Console) Flush() {
+func (UI) Flush() {
 	termbox.Flush()
 }
 
-func (Console) Size() (w, h int) {
+func (UI) Size() (w, h int) {
 	return termbox.Size()
 }
 
-func (Console) translateEvents() {
+func (UI) translateEvents() {
 Loop:
 	for {
 		ev := termbox.PollEvent()

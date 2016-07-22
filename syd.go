@@ -7,13 +7,13 @@ import (
 	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/event"
-	"github.com/mibk/syd/ui/console"
+	"github.com/mibk/syd/ui/term"
 	"github.com/mibk/syd/undo"
 	"github.com/mibk/syd/view"
 )
 
 var (
-	ui       console.Console
+	ui       term.UI
 	filename = ""
 
 	buffer   *undo.Buffer
@@ -58,7 +58,7 @@ func insertMode() {
 		viewport.SetSize(w, h-2) // 2 for the footer
 		viewport.Render(ui)
 		printFoot()
-		print(0, h-1, "-- INSERT --", console.AttrBold)
+		print(0, h-1, "-- INSERT --", term.AttrBold)
 		ui.Flush()
 		select {
 		case ev := <-event.Events:
@@ -85,7 +85,7 @@ func print(x, y int, s string, attrs uint8) {
 func printFoot() {
 	w, h := ui.Size()
 	for x := 0; x < w; x++ {
-		ui.SetCell(x, h-2, ' ', console.AttrReverse|console.AttrBold)
+		ui.SetCell(x, h-2, ' ', term.AttrReverse|term.AttrBold)
 	}
 	filename := filename
 	if filename == "" {
@@ -94,5 +94,5 @@ func printFoot() {
 	if buffer.Modified() {
 		filename += " [+]"
 	}
-	print(0, h-2, filename, console.AttrReverse|console.AttrBold)
+	print(0, h-2, filename, term.AttrReverse|term.AttrBold)
 }

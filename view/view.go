@@ -5,7 +5,7 @@ import (
 
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/event"
-	"github.com/mibk/syd/ui/console"
+	"github.com/mibk/syd/ui/term"
 )
 
 const tabStop = 8
@@ -40,7 +40,7 @@ func (v *View) SetSize(w, h int) {
 	v.width, v.height = w, h
 }
 
-func (v *View) Render(ui console.Console) {
+func (v *View) Render(ui term.UI) {
 	setCursor := func(x, y int) {
 		ui.SetCursor(x, y)
 		v.line0, v.line1 = y, y
@@ -56,7 +56,7 @@ func (v *View) Render(ui console.Console) {
 	for y, l := range v.lines {
 		x := 0
 		for _, r := range l {
-			ui.SetCell(x, y, r, console.AttrDefault)
+			ui.SetCell(x, y, r, term.AttrDefault)
 			if p == v.q0 {
 				setCursor(x, y)
 			}
