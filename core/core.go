@@ -69,11 +69,11 @@ func (b *Buffer) readRuneAtByteOffset(off int64) (rune, int, error) {
 
 func (b *Buffer) Insert(q int64, s string) {
 	b.setPos(q)
-	b.buf.Insert(int(b.offset), []byte(s))
+	b.buf.Insert(b.offset, []byte(s))
 }
 
 func (b *Buffer) Delete(q0, q1 int64) {
-	size := 0
+	var size int64
 	offset := b.setPos(q0)
 	for l := q1 - q0; l > 0; l-- {
 		_, s, err := b.ReadRuneAt(q0)
@@ -82,10 +82,10 @@ func (b *Buffer) Delete(q0, q1 int64) {
 		} else if err != nil {
 			panic(err)
 		}
-		size += s
+		size += int64(s)
 		q0++
 	}
-	if err := b.buf.Delete(int(offset), size); err != nil {
+	if err := b.buf.Delete(offset, size); err != nil {
 		panic(err)
 	}
 }

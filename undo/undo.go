@@ -104,11 +104,11 @@ func (p *piece) insert(pos int, data []byte) {
 	p.data = append(p.data[:pos], append(data, p.data[pos:]...)...)
 }
 
-func (p *piece) delete(pos, length int) bool {
-	if pos+length > len(p.data) {
+func (p *piece) delete(pos int, length int64) bool {
+	if int64(pos)+length > int64(len(p.data)) {
 		return false
 	}
-	p.data = append(p.data[:pos], p.data[pos+length:]...)
+	p.data = append(p.data[:pos], p.data[pos+int(length):]...)
 	return true
 }
 
@@ -121,9 +121,9 @@ type span struct {
 
 // change keeps all needed information to redo/undo an insertion/deletion.
 type change struct {
-	old span // all pieces which are being modified/swapped out by the change
-	new span // all pieces which are introduced/swapped int by the change
-	pos int  // absolute position at which the change occured
+	old span  // all pieces which are being modified/swapped out by the change
+	new span  // all pieces which are introduced/swapped int by the change
+	pos int64 // absolute position at which the change occured
 }
 
 // action is a list of changes which are used to undo/redo all modifications.
@@ -214,20 +214,20 @@ func (b *Buffer) newEmptyPiece() *piece {
 // to the left is returned with an offset of piece's length.
 //
 // If pos is zero, the begin sentinel piece is returned.
-func (b *Buffer) findPiece(pos int) (p *piece, offset int) {
-	cur := 0
+func (b *Buffer) findPiece(pos int64) (p *piece, offset int) {
+	var cur int64
 	for p = b.begin; p.next != nil; p = p.next {
-		if cur <= pos && pos <= cur+p.len() {
-			return p, pos - cur
+		if cur <= pos && pos <= cur+int64(p.len()) {
+			return p, int(pos - cur)
 		}
-		cur += p.len()
+		cur += int64(p.len())
 	}
 	return nil, 0
 }
 
 // newChange is associated with the current action or a newly allocated one if
 // none exists.
-func (b *Buffer) newChange(pos int) *change {
+func (b *Buffer) newChange(pos int64) *change {
 	a := b.currentAction
 	if a == nil {
 		a = b.newAction()
@@ -249,7 +249,7 @@ func (b *Buffer) newAction() *action {
 
 // Insert inserts the data at the given pos in the buffer. An error is return when the
 // given pos is invalid.
-func (b *Buffer) Insert(pos int, data []byte) error {
+func (b *Buffer) Insert(pos int64, data []byte) error {
 	if len(data) == 0 {
 		return nil
 	}
@@ -294,7 +294,7 @@ func (b *Buffer) Insert(pos int, data []byte) error {
 // is returned if the portion isn't in the range of the buffer size. If the length
 // exceeds the size of the buffer, the portions from the pos to the end of the buffer
 // will be deleted.
-func (b *Buffer) Delete(pos, length int) error {
+func (b *Buffer) Delete(pos, length int64) error {
 	if length <= 0 {
 		return nil
 	}
@@ -320,7 +320,7 @@ func (b *Buffer) Delete(pos, length int) error {
 	}
 	b.cachedPiece = nil
 
-	var cur int // how much has already been deleted
+	var cur int64 // how much has already been deleted
 	midwayStart, midwayEnd := false, false
 
 	var before, after *piece // unmodified pieces before/after deletion point
@@ -333,7 +333,7 @@ func (b *Buffer) Delete(pos, length int) error {
 	} else {
 		// deletion starts midway through a piece
 		midwayStart = true
-		cur = p.len() - offset
+		cur = int64(p.len() - offset)
 		start = p
 		before = b.newEmptyPiece()
 	}
@@ -348,7 +348,7 @@ func (b *Buffer) Delete(pos, length int) error {
 		p = p.next
 		if p == nil {
 		}
-		cur += p.len()
+		cur += int64(p.len())
 	}
 
 	if cur == length {
@@ -360,7 +360,7 @@ func (b *Buffer) Delete(pos, length int) error {
 		midwayEnd = true
 		end = p
 
-		beg := p.len() - cur + length
+		beg := p.len() + int(length-cur)
 		newBuf := make([]byte, len(p.data[beg:]))
 		copy(newBuf, p.data[beg:])
 		after = b.newPiece(newBuf, before, p.next)
@@ -398,13 +398,13 @@ func (b *Buffer) Delete(pos, length int) error {
 // Undo reverts the last performed action. It return the position in bytes
 // which the action occured on. If there is no action to undo, returned
 // position would be -1.
-func (b *Buffer) Undo() int {
+func (b *Buffer) Undo() int64 {
 	b.CommitChanges()
 	a := b.unshiftAction()
 	if a == nil {
 		return -1
 	}
-	var pos int
+	var pos int64
 	for i := len(a.changes) - 1; i >= 0; i-- {
 		c := a.changes[i]
 		swapSpans(c.new, c.old)
@@ -425,13 +425,13 @@ func (b *Buffer) unshiftAction() *action {
 // Redo repeats the last undone action. It return the position in bytes
 // which the action occured on. If there is no action to redo, returned
 // position would be -1.
-func (b *Buffer) Redo() int {
+func (b *Buffer) Redo() int64 {
 	b.CommitChanges()
 	a := b.shiftAction()
 	if a == nil {
 		return -1
 	}
-	var pos int
+	var pos int64
 	for _, c := range a.changes {
 		swapSpans(c.old, c.new)
 		pos = c.pos

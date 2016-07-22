@@ -241,7 +241,7 @@ func (t *Buffer) insertString(pos int, data string) {
 }
 
 func (t *Buffer) cacheInsertString(pos int, data string) {
-	err := t.Insert(pos, []byte(data))
+	err := t.Insert(int64(pos), []byte(data))
 	if err != nil {
 		panic(err)
 	}
@@ -253,7 +253,7 @@ func (t *Buffer) delete(pos, length int) {
 }
 
 func (t *Buffer) cacheDelete(pos, length int) {
-	t.Delete(pos, length)
+	t.Delete(int64(pos), int64(length))
 }
 
 func (t *Buffer) printPieces() {
