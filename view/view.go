@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/mibk/syd/core"
-	"github.com/mibk/syd/event"
+	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 )
 
@@ -115,26 +115,26 @@ func tabWidthForCol(col int) int {
 	return w
 }
 
-func (v *View) Type(ev event.KeyPress) {
+func (v *View) Type(ev ui.KeyPress) {
 	switch {
-	case ev.Key == event.Escape:
-	case ev.Key == event.Backspace:
+	case ev.Key == ui.KeyEscape:
+	case ev.Key == ui.KeyBackspace:
 		if v.q0 == 0 {
 			return
 		}
 		v.q0, v.q1 = v.q0-1, v.q0-1
 		fallthrough
-	case ev.Key == event.Delete:
+	case ev.Key == ui.KeyDelete:
 		v.buf.Delete(v.q0, v.q0+1)
 		v.checkVisibility()
-	case ev.Key == event.Left:
+	case ev.Key == ui.KeyLeft:
 		if v.q0 == 0 {
 			return
 		}
 		v.q0, v.q1 = v.q0-1, v.q0-1
 		v.wantCol = -1
 		v.checkVisibility()
-	case ev.Key == event.Right:
+	case ev.Key == ui.KeyRight:
 		v.q0, v.q1 = v.q0+1, v.q0+1
 		v.wantCol = -1
 		if v.q0 > v.origin+int64(v.nchars) {
@@ -149,10 +149,10 @@ func (v *View) Type(ev event.KeyPress) {
 			}
 		}
 		v.checkVisibility()
-	case ev.Key == event.Up:
+	case ev.Key == ui.KeyUp:
 		q := v.findQ(v.line0-1, v.wantCol)
 		v.q0, v.q1 = q, q
-	case ev.Key == event.Down:
+	case ev.Key == ui.KeyDown:
 		q := v.findQ(v.line1+1, v.wantCol)
 		v.q0, v.q1 = q, q
 
@@ -161,9 +161,9 @@ func (v *View) Type(ev event.KeyPress) {
 		v.buf.Undo()
 	case ev.Key == 'y' && ev.Ctrl:
 		v.buf.Redo()
-	case ev.Key == event.PageUp:
+	case ev.Key == ui.KeyPageUp:
 		v.origin = v.prevNewLine(v.origin, v.height)
-	case ev.Key == event.PageDown:
+	case ev.Key == ui.KeyPageDown:
 		v.origin = v.origin + int64(v.nchars)
 
 	default:

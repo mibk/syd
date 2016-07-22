@@ -1,7 +1,7 @@
 package term
 
 import (
-	"github.com/mibk/syd/event"
+	"github.com/mibk/syd/ui"
 	"github.com/nsf/termbox-go"
 )
 
@@ -50,101 +50,100 @@ func (UI) Size() (w, h int) {
 }
 
 func (UI) translateEvents() {
-Loop:
 	for {
-		ev := termbox.PollEvent()
-		switch ev.Type {
+		termEv := termbox.PollEvent()
+		switch termEv.Type {
 		case termbox.EventKey:
-			var outEv event.KeyPress
-			if ev.Ch == 0 {
-				switch ev.Key {
-				case termbox.KeyCtrlSpace:
-					outEv = event.KeyPress{Key: ' ', Ctrl: true}
-				case termbox.KeyCtrlA:
-					outEv = event.KeyPress{Key: 'a', Ctrl: true}
-				case termbox.KeyCtrlB:
-					outEv = event.KeyPress{Key: 'b', Ctrl: true}
-				case termbox.KeyCtrlC:
-					outEv = event.KeyPress{Key: 'c', Ctrl: true}
-				case termbox.KeyCtrlD:
-					outEv = event.KeyPress{Key: 'd', Ctrl: true}
-				case termbox.KeyCtrlE:
-					outEv = event.KeyPress{Key: 'e', Ctrl: true}
-				case termbox.KeyCtrlF:
-					outEv = event.KeyPress{Key: 'f', Ctrl: true}
-				case termbox.KeyCtrlG:
-					outEv = event.KeyPress{Key: 'g', Ctrl: true}
-				case termbox.KeyCtrlH:
-					outEv = event.KeyPress{Key: 'h', Ctrl: true}
-				// Ctrl+I is the same as termbox.KeyTab
-				case termbox.KeyCtrlJ:
-					outEv = event.KeyPress{Key: 'j', Ctrl: true}
-				case termbox.KeyCtrlK:
-					outEv = event.KeyPress{Key: 'k', Ctrl: true}
-				case termbox.KeyCtrlL:
-					outEv = event.KeyPress{Key: 'l', Ctrl: true}
-				// Ctrl+M is the same as termbox.KeyEnter
-				case termbox.KeyCtrlN:
-					outEv = event.KeyPress{Key: 'n', Ctrl: true}
-				case termbox.KeyCtrlO:
-					outEv = event.KeyPress{Key: 'o', Ctrl: true}
-				case termbox.KeyCtrlP:
-					outEv = event.KeyPress{Key: 'p', Ctrl: true}
-				case termbox.KeyCtrlQ:
-					outEv = event.KeyPress{Key: 'q', Ctrl: true}
-				case termbox.KeyCtrlR:
-					outEv = event.KeyPress{Key: 'r', Ctrl: true}
-				case termbox.KeyCtrlS:
-					outEv = event.KeyPress{Key: 's', Ctrl: true}
-				case termbox.KeyCtrlT:
-					outEv = event.KeyPress{Key: 't', Ctrl: true}
-				case termbox.KeyCtrlU:
-					outEv = event.KeyPress{Key: 'u', Ctrl: true}
-				case termbox.KeyCtrlV:
-					outEv = event.KeyPress{Key: 'v', Ctrl: true}
-				case termbox.KeyCtrlW:
-					outEv = event.KeyPress{Key: 'w', Ctrl: true}
-				case termbox.KeyCtrlX:
-					outEv = event.KeyPress{Key: 'x', Ctrl: true}
-				case termbox.KeyCtrlY:
-					outEv = event.KeyPress{Key: 'y', Ctrl: true}
-				case termbox.KeyCtrlZ:
-					outEv = event.KeyPress{Key: 'z', Ctrl: true}
-
-				case termbox.KeySpace:
-					outEv = event.KeyPress{Key: ' '}
-				case termbox.KeyTab:
-					outEv = event.KeyPress{Key: '\t'}
-				case termbox.KeyEnter:
-					outEv = event.KeyPress{Key: event.Enter}
-				case termbox.KeyBackspace2:
-					outEv = event.KeyPress{Key: event.Backspace}
-				case termbox.KeyDelete:
-					outEv = event.KeyPress{Key: event.Delete}
-				case termbox.KeyEsc:
-					outEv = event.KeyPress{Key: event.Escape}
-
-				case termbox.KeyArrowLeft:
-					outEv = event.KeyPress{Key: event.Left}
-				case termbox.KeyArrowRight:
-					outEv = event.KeyPress{Key: event.Right}
-				case termbox.KeyArrowUp:
-					outEv = event.KeyPress{Key: event.Up}
-				case termbox.KeyArrowDown:
-					outEv = event.KeyPress{Key: event.Down}
-
-				case termbox.KeyPgup:
-					outEv = event.KeyPress{Key: event.PageUp}
-				case termbox.KeyPgdn:
-					outEv = event.KeyPress{Key: event.PageDown}
-
-				default:
-					continue Loop
-				}
-			} else {
-				outEv = event.KeyPress{Key: event.Key(ev.Ch)}
+			if termEv.Ch != 0 {
+				ui.Events <- ui.KeyPress{Key: termEv.Ch}
+				continue
 			}
-			event.MakeEvent(outEv)
+			var ev ui.KeyPress
+			switch termEv.Key {
+			case termbox.KeyCtrlSpace:
+				ev = ui.KeyPress{Key: ' ', Ctrl: true}
+			case termbox.KeyCtrlA:
+				ev = ui.KeyPress{Key: 'a', Ctrl: true}
+			case termbox.KeyCtrlB:
+				ev = ui.KeyPress{Key: 'b', Ctrl: true}
+			case termbox.KeyCtrlC:
+				ev = ui.KeyPress{Key: 'c', Ctrl: true}
+			case termbox.KeyCtrlD:
+				ev = ui.KeyPress{Key: 'd', Ctrl: true}
+			case termbox.KeyCtrlE:
+				ev = ui.KeyPress{Key: 'e', Ctrl: true}
+			case termbox.KeyCtrlF:
+				ev = ui.KeyPress{Key: 'f', Ctrl: true}
+			case termbox.KeyCtrlG:
+				ev = ui.KeyPress{Key: 'g', Ctrl: true}
+			case termbox.KeyCtrlH:
+				ev = ui.KeyPress{Key: 'h', Ctrl: true}
+			// Ctrl+I is the same as termbox.KeyTab
+			case termbox.KeyCtrlJ:
+				ev = ui.KeyPress{Key: 'j', Ctrl: true}
+			case termbox.KeyCtrlK:
+				ev = ui.KeyPress{Key: 'k', Ctrl: true}
+			case termbox.KeyCtrlL:
+				ev = ui.KeyPress{Key: 'l', Ctrl: true}
+			// Ctrl+M is the same as termbox.KeyEnter
+			case termbox.KeyCtrlN:
+				ev = ui.KeyPress{Key: 'n', Ctrl: true}
+			case termbox.KeyCtrlO:
+				ev = ui.KeyPress{Key: 'o', Ctrl: true}
+			case termbox.KeyCtrlP:
+				ev = ui.KeyPress{Key: 'p', Ctrl: true}
+			case termbox.KeyCtrlQ:
+				ev = ui.KeyPress{Key: 'q', Ctrl: true}
+			case termbox.KeyCtrlR:
+				ev = ui.KeyPress{Key: 'r', Ctrl: true}
+			case termbox.KeyCtrlS:
+				ev = ui.KeyPress{Key: 's', Ctrl: true}
+			case termbox.KeyCtrlT:
+				ev = ui.KeyPress{Key: 't', Ctrl: true}
+			case termbox.KeyCtrlU:
+				ev = ui.KeyPress{Key: 'u', Ctrl: true}
+			case termbox.KeyCtrlV:
+				ev = ui.KeyPress{Key: 'v', Ctrl: true}
+			case termbox.KeyCtrlW:
+				ev = ui.KeyPress{Key: 'w', Ctrl: true}
+			case termbox.KeyCtrlX:
+				ev = ui.KeyPress{Key: 'x', Ctrl: true}
+			case termbox.KeyCtrlY:
+				ev = ui.KeyPress{Key: 'y', Ctrl: true}
+			case termbox.KeyCtrlZ:
+				ev = ui.KeyPress{Key: 'z', Ctrl: true}
+
+			case termbox.KeySpace:
+				ev = ui.KeyPress{Key: ' '}
+			case termbox.KeyTab:
+				ev = ui.KeyPress{Key: '\t'}
+			case termbox.KeyEnter:
+				ev = ui.KeyPress{Key: ui.KeyEnter}
+			case termbox.KeyBackspace2:
+				ev = ui.KeyPress{Key: ui.KeyBackspace}
+			case termbox.KeyDelete:
+				ev = ui.KeyPress{Key: ui.KeyDelete}
+			case termbox.KeyEsc:
+				ev = ui.KeyPress{Key: ui.KeyEscape}
+
+			case termbox.KeyArrowLeft:
+				ev = ui.KeyPress{Key: ui.KeyLeft}
+			case termbox.KeyArrowRight:
+				ev = ui.KeyPress{Key: ui.KeyRight}
+			case termbox.KeyArrowUp:
+				ev = ui.KeyPress{Key: ui.KeyUp}
+			case termbox.KeyArrowDown:
+				ev = ui.KeyPress{Key: ui.KeyDown}
+
+			case termbox.KeyPgup:
+				ev = ui.KeyPress{Key: ui.KeyPageUp}
+			case termbox.KeyPgdn:
+				ev = ui.KeyPress{Key: ui.KeyPageDown}
+
+			default:
+				continue
+			}
+			ui.Events <- ev
 		}
 	}
 }

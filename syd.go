@@ -6,14 +6,14 @@ import (
 
 	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/core"
-	"github.com/mibk/syd/event"
+	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 	"github.com/mibk/syd/undo"
 	"github.com/mibk/syd/view"
 )
 
 var (
-	ui       term.UI
+	win      term.UI
 	filename = ""
 
 	buffer   *undo.Buffer
@@ -21,8 +21,8 @@ var (
 )
 
 func main() {
-	ui.Init()
-	defer ui.Close()
+	win.Init()
+	defer win.Close()
 
 	var b []byte
 	if len(os.Args) > 1 {
@@ -54,16 +54,16 @@ func readFile(filename string) (mmap.MMap, error) {
 
 func insertMode() {
 	for {
-		w, h := ui.Size()
+		w, h := win.Size()
 		viewport.SetSize(w, h-2) // 2 for the footer
-		viewport.Render(ui)
+		viewport.Render(win)
 		printFoot()
 		print(0, h-1, "-- INSERT --", term.AttrBold)
-		ui.Flush()
+		win.Flush()
 		select {
-		case ev := <-event.Events:
+		case ev := <-ui.Events:
 			switch ev := ev.(type) {
-			case event.KeyPress:
+			case ui.KeyPress:
 				if ev.Key == 'x' && ev.Ctrl {
 					return
 				}
@@ -77,15 +77,15 @@ func insertMode() {
 
 func print(x, y int, s string, attrs uint8) {
 	for _, r := range []rune(s) {
-		ui.SetCell(x, y, r, attrs)
+		win.SetCell(x, y, r, attrs)
 		x++
 	}
 }
 
 func printFoot() {
-	w, h := ui.Size()
+	w, h := win.Size()
 	for x := 0; x < w; x++ {
-		ui.SetCell(x, h-2, ' ', term.AttrReverse|term.AttrBold)
+		win.SetCell(x, h-2, ' ', term.AttrReverse|term.AttrBold)
 	}
 	filename := filename
 	if filename == "" {
