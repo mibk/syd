@@ -4,18 +4,18 @@ import (
 	"io"
 	"unicode/utf8"
 
-	"github.com/mibk/syd/text"
+	"github.com/mibk/syd/undo"
 )
 
 type Buffer struct {
-	buf    *text.Text
+	buf    *undo.Buffer
 	offset int64 // offset in bytes
 	pos    int64 // position in runes
 
 	rb []byte // rune buffer
 }
 
-func NewBuffer(buf *text.Text) *Buffer {
+func NewBuffer(buf *undo.Buffer) *Buffer {
 	return &Buffer{
 		buf: buf,
 		rb:  make([]byte, 4),

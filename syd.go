@@ -7,8 +7,8 @@ import (
 	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/event"
-	"github.com/mibk/syd/text"
 	"github.com/mibk/syd/ui/console"
+	"github.com/mibk/syd/undo"
 	"github.com/mibk/syd/view"
 )
 
@@ -16,7 +16,7 @@ var (
 	ui       console.Console
 	filename = ""
 
-	buffer   *text.Text
+	buffer   *undo.Buffer
 	viewport *view.View
 )
 
@@ -34,7 +34,7 @@ func main() {
 		defer m.Unmap()
 		b = []byte(m)
 	}
-	buffer = text.New(b)
+	buffer = undo.NewBuffer(b)
 	viewport = view.New(core.NewBuffer(buffer))
 	insertMode()
 }

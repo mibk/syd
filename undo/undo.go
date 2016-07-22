@@ -17,7 +17,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// Package text provides methods for undoable/redoable text manipulation.
+// Package undo provides methods for undoable/redoable text manipulation.
 // Modifications are made by two operations: insert or delete.
 //
 // The package is based on the text manipulation in the vis editor. (Some parts are
@@ -78,7 +78,7 @@
 // and deletations). An action is represented by any operations between two calls of
 // CommitChange method. Anything that happens between these two calls is a part of that
 // particular action.
-package text
+package undo
 
 import (
 	"errors"
@@ -164,9 +164,9 @@ func swapSpans(old, new span) {
 	}
 }
 
-// Text is the representation of a structure capable of two operations: inserting or
-// deleting. All operations could be unlimitedly undone or redone.
-type Text struct {
+// A Buffer is a structure capable of two operations: inserting or deleting.
+// All operations could be unlimitedly undone or redone.
+type Buffer struct {
 	piecesCnt   int    // number of pieces allocated
 	begin, end  *piece // sentinel nodes which always exists but don't hold any data
 	cachedPiece *piece // most recently modified piece
@@ -177,11 +177,11 @@ type Text struct {
 	savedAction   *action
 }
 
-// New initializes a new text with the given content as a starting point.
-// To start with an empty text pass nil as a content.
-func New(content []byte) *Text {
+// NewBuffer initializes a new buffer with the given content as a starting point.
+// To start with an empty buffer pass nil as a content.
+func NewBuffer(content []byte) *Buffer {
 	// give the actions stack some default capacity
-	t := &Text{actions: make([]*action, 0, 100)}
+	t := &Buffer{actions: make([]*action, 0, 100)}
 
 	t.begin = t.newEmptyPiece()
 	t.end = t.newPiece(nil, t.begin, nil)
@@ -195,18 +195,18 @@ func New(content []byte) *Text {
 	return t
 }
 
-func (t *Text) newPiece(data []byte, prev, next *piece) *piece {
-	t.piecesCnt++
+func (b *Buffer) newPiece(data []byte, prev, next *piece) *piece {
+	b.piecesCnt++
 	return &piece{
-		id:   t.piecesCnt,
+		id:   b.piecesCnt,
 		prev: prev,
 		next: next,
 		data: data,
 	}
 }
 
-func (t *Text) newEmptyPiece() *piece {
-	return t.newPiece(nil, nil, nil)
+func (b *Buffer) newEmptyPiece() *piece {
+	return b.newPiece(nil, nil, nil)
 }
 
 // findPiece returns the piece holding the text at the byte offset pos. If pos happens
@@ -214,9 +214,9 @@ func (t *Text) newEmptyPiece() *piece {
 // to the left is returned with an offset of piece's length.
 //
 // If pos is zero, the begin sentinel piece is returned.
-func (t *Text) findPiece(pos int) (p *piece, offset int) {
+func (b *Buffer) findPiece(pos int) (p *piece, offset int) {
 	cur := 0
-	for p = t.begin; p.next != nil; p = p.next {
+	for p = b.begin; p.next != nil; p = p.next {
 		if cur <= pos && pos <= cur+p.len() {
 			return p, pos - cur
 		}
@@ -227,12 +227,12 @@ func (t *Text) findPiece(pos int) (p *piece, offset int) {
 
 // newChange is associated with the current action or a newly allocated one if
 // none exists.
-func (t *Text) newChange(pos int) *change {
-	a := t.currentAction
+func (b *Buffer) newChange(pos int) *change {
+	a := b.currentAction
 	if a == nil {
-		a = t.newAction()
-		t.cachedPiece = nil
-		t.currentAction = a
+		a = b.newAction()
+		b.cachedPiece = nil
+		b.currentAction = a
 	}
 	c := &change{pos: pos}
 	a.changes = append(a.changes, c)
@@ -240,35 +240,35 @@ func (t *Text) newChange(pos int) *change {
 }
 
 // newAction creates a new action and throws away all undone actions.
-func (t *Text) newAction() *action {
+func (b *Buffer) newAction() *action {
 	a := &action{time: time.Now()}
-	t.actions = append(t.actions[:t.head], a)
-	t.head++
+	b.actions = append(b.actions[:b.head], a)
+	b.head++
 	return a
 }
 
-// Insert inserts the data to the pos in the text. An error is return when the
+// Insert inserts the data at the given pos in the buffer. An error is return when the
 // given pos is invalid.
-func (t *Text) Insert(pos int, data []byte) error {
+func (b *Buffer) Insert(pos int, data []byte) error {
 	if len(data) == 0 {
 		return nil
 	}
 
-	p, offset := t.findPiece(pos)
+	p, offset := b.findPiece(pos)
 	if p == nil {
 		return ErrWrongPos
-	} else if p == t.cachedPiece {
+	} else if p == b.cachedPiece {
 		// just update the last inserted piece
 		p.insert(offset, data)
 		return nil
 	}
 
-	c := t.newChange(pos)
+	c := b.newChange(pos)
 	var pnew *piece
 	if offset == p.len() {
 		// Insert between two existing pieces, hence there is nothing to
 		// remove, just add a new piece holding the extra text.
-		pnew = t.newPiece(data, p, p.next)
+		pnew = b.newPiece(data, p, p.next)
 		c.new = newSpan(pnew, pnew)
 		c.old = newSpan(nil, nil)
 	} else {
@@ -276,33 +276,33 @@ func (t *Text) Insert(pos int, data []byte) error {
 		// piece. That is we have 3 new pieces one containing the content
 		// before the insertion point then one holding the newly inserted
 		// text and one holding the content after the insertion point.
-		before := t.newPiece(p.data[:offset], p.prev, nil)
-		pnew = t.newPiece(data, before, nil)
-		after := t.newPiece(p.data[offset:], pnew, p.next)
+		before := b.newPiece(p.data[:offset], p.prev, nil)
+		pnew = b.newPiece(data, before, nil)
+		after := b.newPiece(p.data[offset:], pnew, p.next)
 		before.next = pnew
 		pnew.next = after
 		c.new = newSpan(before, after)
 		c.old = newSpan(p, p)
 	}
 
-	t.cachedPiece = pnew
+	b.cachedPiece = pnew
 	swapSpans(c.old, c.new)
 	return nil
 }
 
-// Delete deletes the portion of the text at the pos of given length. An error
-// is returned if the portion isn't in the range of the text. If the length exceeds
-// the size of the text, the portions from the pos to the end of the text will
-// be deleted.
-func (t *Text) Delete(pos, length int) error {
+// Delete deletes the portion of the buffer at the pos of given length. An error
+// is returned if the portion isn't in the range of the buffer size. If the length
+// exceeds the size of the buffer, the portions from the pos to the end of the buffer
+// will be deleted.
+func (b *Buffer) Delete(pos, length int) error {
 	if length <= 0 {
 		return nil
 	}
 
-	p, offset := t.findPiece(pos)
+	p, offset := b.findPiece(pos)
 	if p == nil {
 		return ErrWrongPos
-	} else if p == t.cachedPiece {
+	} else if p == b.cachedPiece {
 		p := p
 		offset := offset
 		if offset == p.len() {
@@ -318,7 +318,7 @@ func (t *Text) Delete(pos, length int) error {
 			return nil
 		}
 	}
-	t.cachedPiece = nil
+	b.cachedPiece = nil
 
 	var cur int // how much has already been deleted
 	midwayStart, midwayEnd := false, false
@@ -335,12 +335,12 @@ func (t *Text) Delete(pos, length int) error {
 		midwayStart = true
 		cur = p.len() - offset
 		start = p
-		before = t.newEmptyPiece()
+		before = b.newEmptyPiece()
 	}
 
 	// skip all pieces which fall into deletion range
 	for cur < length {
-		if p.next == t.end {
+		if p.next == b.end {
 			// delete all
 			length = cur
 			break
@@ -363,7 +363,7 @@ func (t *Text) Delete(pos, length int) error {
 		beg := p.len() - cur + length
 		newBuf := make([]byte, len(p.data[beg:]))
 		copy(newBuf, p.data[beg:])
-		after = t.newPiece(newBuf, before, p.next)
+		after = b.newPiece(newBuf, before, p.next)
 	}
 
 	var newStart, newEnd *piece
@@ -386,8 +386,8 @@ func (t *Text) Delete(pos, length int) error {
 		}
 	}
 
-	t.cachedPiece = newStart
-	c := t.newChange(pos)
+	b.cachedPiece = newStart
+	c := b.newChange(pos)
 	c.new = newSpan(newStart, newEnd)
 	c.old = newSpan(start, end)
 	swapSpans(c.old, c.new)
@@ -398,9 +398,9 @@ func (t *Text) Delete(pos, length int) error {
 // Undo reverts the last performed action. It return the position in bytes
 // which the action occured on. If there is no action to undo, returned
 // position would be -1.
-func (t *Text) Undo() int {
-	t.CommitChanges()
-	a := t.unshiftAction()
+func (b *Buffer) Undo() int {
+	b.CommitChanges()
+	a := b.unshiftAction()
 	if a == nil {
 		return -1
 	}
@@ -414,20 +414,20 @@ func (t *Text) Undo() int {
 	return pos
 }
 
-func (t *Text) unshiftAction() *action {
-	if t.head == 0 {
+func (b *Buffer) unshiftAction() *action {
+	if b.head == 0 {
 		return nil
 	}
-	t.head--
-	return t.actions[t.head]
+	b.head--
+	return b.actions[b.head]
 }
 
 // Redo repeats the last undone action. It return the position in bytes
 // which the action occured on. If there is no action to redo, returned
 // position would be -1.
-func (t *Text) Redo() int {
-	t.CommitChanges()
-	a := t.shiftAction()
+func (b *Buffer) Redo() int {
+	b.CommitChanges()
+	a := b.shiftAction()
 	if a == nil {
 		return -1
 	}
@@ -439,39 +439,39 @@ func (t *Text) Redo() int {
 	return pos
 }
 
-func (t *Text) shiftAction() *action {
-	if t.head > len(t.actions)-1 {
+func (b *Buffer) shiftAction() *action {
+	if b.head > len(b.actions)-1 {
 		return nil
 	}
-	t.head++
-	return t.actions[t.head-1]
+	b.head++
+	return b.actions[b.head-1]
 }
 
 // CommitChanges commits the current action. All following changes won't be
 // a part of that action.
-func (t *Text) CommitChanges() {
-	t.currentAction = nil
-	t.cachedPiece = nil
+func (b *Buffer) CommitChanges() {
+	b.currentAction = nil
+	b.cachedPiece = nil
 }
 
 // Save the current state.
-func (t *Text) Save() {
-	if t.head > 0 {
-		t.savedAction = t.actions[t.head-1]
+func (b *Buffer) Save() {
+	if b.head > 0 {
+		b.savedAction = b.actions[b.head-1]
 	} else {
-		t.savedAction = nil
+		b.savedAction = nil
 	}
 }
 
-// Modified reports whether the current state of t is different from the one
+// Modified reports whether the current state of b is different from the one
 // in the time of calling Save.
-func (t *Text) Modified() bool {
-	return t.head == 0 && t.savedAction != nil ||
-		t.head > 0 && t.savedAction != t.actions[t.head-1]
+func (b *Buffer) Modified() bool {
+	return b.head == 0 && b.savedAction != nil ||
+		b.head > 0 && b.savedAction != b.actions[b.head-1]
 }
 
-func (t *Text) ReadAt(data []byte, off int64) (n int, err error) {
-	p := t.begin
+func (b *Buffer) ReadAt(data []byte, off int64) (n int, err error) {
+	p := b.begin
 	for ; p != nil; p = p.next {
 		if off < int64(p.len()) {
 			break
