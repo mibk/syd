@@ -18,7 +18,8 @@ type View struct {
 	origin int64
 	q0, q1 int64
 
-	vismode bool
+	qvis    *int64
+	linevis *int
 
 	// Frame
 	lines       [][]rune
@@ -153,28 +154,30 @@ func (v *View) Type(ev ui.KeyPress) {
 		v.q1 = v.q0
 		v.buf.Delete(v.q0, q1)
 		v.checkVisibility()
-		v.vismode = false
+		v.qvis = nil
 	case ev.Key == ui.KeyLeft:
 		if v.q0 == 0 {
 			return
 		}
-		v.q0--
-		if !v.vismode {
-			v.q1 = v.q0
+		if v.qvis != nil {
+			v.moveVis(*v.qvis - 1)
+		} else {
+			v.q0, v.q1 = v.q0-1, v.q0-1
 		}
 		v.wantCol = colQ0
 		v.checkVisibility()
 	case ev.Key == ui.KeyRight:
-		v.q1++
-		if !v.vismode {
-			v.q0 = v.q1
+		if v.qvis != nil {
+			v.moveVis(*v.qvis + 1)
+		} else {
+			v.q0, v.q1 = v.q1+1, v.q1+1
 		}
 		v.wantCol = colQ1
-		if v.q0 > v.origin+int64(v.nchars) {
+		if v.q1 > v.origin+int64(v.nchars) {
 			oldOrg := v.origin
 			v.origin = v.nextNewLine(3)
 			v.loadText()
-			if v.q0 > v.origin+int64(v.nchars) {
+			if v.q1 > v.origin+int64(v.nchars) {
 				// There's no more content, get back.
 				v.origin = oldOrg
 				v.q1--
@@ -186,17 +189,21 @@ func (v *View) Type(ev ui.KeyPress) {
 		}
 		v.checkVisibility()
 	case ev.Key == ui.KeyUp:
-		q := v.findQ(v.line0-1, v.wantCol)
-		if !v.vismode {
-			v.q1 = q
+		if v.qvis != nil {
+			q := v.findQ(*v.linevis-1, v.wantCol)
+			v.moveVis(q)
+		} else {
+			q := v.findQ(v.line0-1, v.wantCol)
+			v.q0, v.q1 = q, q
 		}
-		v.q0 = q
 	case ev.Key == ui.KeyDown:
-		q := v.findQ(v.line1+1, v.wantCol)
-		if !v.vismode {
-			v.q0 = q
+		if v.qvis != nil {
+			q := v.findQ(*v.linevis+1, v.wantCol)
+			v.moveVis(q)
+		} else {
+			q := v.findQ(v.line1+1, v.wantCol)
+			v.q0, v.q1 = q, q
 		}
-		v.q1 = q
 
 	// Temporary shortcuts:
 	case ev.Key == 'z' && ev.Ctrl:
@@ -208,7 +215,12 @@ func (v *View) Type(ev ui.KeyPress) {
 	case ev.Key == ui.KeyPageDown:
 		v.origin = v.origin + int64(v.nchars)
 	case ev.Key == 'v' && ev.Ctrl:
-		v.vismode = !v.vismode
+		if v.qvis == nil {
+			v.qvis = &v.q0
+			v.linevis = &v.line0
+		} else {
+			v.qvis = nil
+		}
 
 	default:
 		if v.q0 != v.q1 {
@@ -218,7 +230,21 @@ func (v *View) Type(ev ui.KeyPress) {
 		v.q0, v.q1 = v.q0+1, v.q0+1
 		v.wantCol = colQ1
 		v.checkVisibility()
-		v.vismode = false
+		v.qvis = nil
+	}
+}
+
+func (v *View) moveVis(q int64) {
+	*v.qvis = q
+	if v.q1 < v.q0 {
+		v.q0, v.q1 = v.q1, v.q0
+		if v.qvis == &v.q0 {
+			v.qvis = &v.q1
+			v.linevis = &v.line1
+		} else {
+			v.qvis = &v.q0
+			v.linevis = &v.line0
+		}
 	}
 }
 
