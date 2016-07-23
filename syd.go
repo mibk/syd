@@ -67,7 +67,7 @@ func insertMode() {
 				if ev.Key == 'x' && ev.Ctrl {
 					return
 				}
-				viewport.Type(ev)
+				handleKeyPress(viewport, ev)
 			}
 		case <-time.After(3 * time.Second):
 			buffer.CommitChanges()

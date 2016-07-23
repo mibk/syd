@@ -4,7 +4,6 @@ import (
 	"io"
 
 	"github.com/mibk/syd/core"
-	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 )
 
@@ -18,15 +17,7 @@ type View struct {
 	origin int64
 	q0, q1 int64
 
-	qvis    *int64
-	linevis *int
-
-	// Frame
-	lines       [][]rune
-	line0, col0 int
-	line1, col1 int
-	wantCol     int
-	nchars      int
+	Frame Frame
 }
 
 func New(buf *core.Buffer) *View {
@@ -56,18 +47,18 @@ func (v *View) Render(ui term.UI) {
 			attr = term.AttrDefault
 		}
 	}
-	v.loadText()
+	v.LoadText()
 	ui.SetCursor(-1, -1)
 	ui.Clear()
 	p := v.origin
-	for y, l := range v.lines {
+	for y, l := range v.Frame.Lines {
 		x := 0
 		for _, r := range l {
 			selText(p, x, y)
 			ui.SetCell(x, y, r, attr)
 			p++
 			if r == '\t' {
-				x += tabWidthForCol(x)
+				x += TabWidthForCol(x)
 			} else {
 				x++
 			}
@@ -77,18 +68,13 @@ func (v *View) Render(ui term.UI) {
 	}
 }
 
-const (
-	colQ0 = -1
-	colQ1 = -2
-)
-
-func (v *View) loadText() {
-	v.lines = nil
+func (v *View) LoadText() {
+	v.Frame.Lines = nil
 	x, y := 0, 0
 	p := v.origin
 	for ; ; p++ {
-		if len(v.lines) <= y {
-			v.lines = append(v.lines, nil)
+		if len(v.Frame.Lines) <= y {
+			v.Frame.Lines = append(v.Frame.Lines, nil)
 		}
 		r, _, err := v.buf.ReadRuneAt(p)
 		if err == io.EOF {
@@ -97,18 +83,18 @@ func (v *View) loadText() {
 			panic(err)
 		}
 		if r != '\n' {
-			v.lines[y] = append(v.lines[y], r)
+			v.Frame.Lines[y] = append(v.Frame.Lines[y], r)
 		}
 		if p == v.q0 {
-			v.line0, v.col0 = y, x
-			if v.wantCol == colQ0 {
-				v.wantCol = x
+			v.Frame.Line0, v.Frame.Col0 = y, x
+			if v.Frame.WantCol == ColQ0 {
+				v.Frame.WantCol = x
 			}
 		}
 		if p == v.q1 {
-			v.line1, v.col1 = y, x
-			if v.wantCol == colQ1 {
-				v.wantCol = x
+			v.Frame.Line1, v.Frame.Col1 = y, x
+			if v.Frame.WantCol == ColQ1 {
+				v.Frame.WantCol = x
 			}
 		}
 
@@ -119,142 +105,68 @@ func (v *View) loadText() {
 				break
 			}
 		} else if r == '\t' {
-			x += tabWidthForCol(x)
+			x += TabWidthForCol(x)
 		} else {
 			x++
 		}
 	}
-	v.nchars = int(p - v.origin)
+	v.Frame.Nchars = int(p - v.origin)
 }
 
-func tabWidthForCol(col int) int {
-	w := tabStop - col%tabStop
-	if w == 0 {
-		return tabStop
+func (v *View) Origin() int64 { return v.origin }
+
+func (v *View) SetOrigin(org int64) { v.origin = org }
+
+func (v *View) Selected() (q0, q1 int64) { return v.q0, v.q1 }
+
+func (v *View) Select(q0, q1 int64) {
+	if q0 < 0 || q1 < q0 {
+		return
 	}
-	return w
-}
-
-func (v *View) Type(ev ui.KeyPress) {
-	switch {
-	case ev.Key == ui.KeyEscape:
-	case ev.Key == ui.KeyBackspace:
-		if v.q0 == 0 {
-			return
-		}
-		if v.q0 == v.q1 {
-			v.q0, v.q1 = v.q0-1, v.q0-1
-		}
-		fallthrough
-	case ev.Key == ui.KeyDelete:
-		q1 := v.q1
-		if v.q0 == v.q1 {
-			q1 = v.q0 + 1
-		}
-		v.q1 = v.q0
-		v.buf.Delete(v.q0, q1)
-		v.checkVisibility()
-		v.qvis = nil
-	case ev.Key == ui.KeyLeft:
-		if v.q0 == 0 {
-			return
-		}
-		if v.qvis != nil {
-			v.moveVis(*v.qvis - 1)
-		} else {
-			v.q0, v.q1 = v.q0-1, v.q0-1
-		}
-		v.wantCol = colQ0
-		v.checkVisibility()
-	case ev.Key == ui.KeyRight:
-		if v.qvis != nil {
-			v.moveVis(*v.qvis + 1)
-		} else {
-			v.q0, v.q1 = v.q1+1, v.q1+1
-		}
-		v.wantCol = colQ1
-		if v.q1 > v.origin+int64(v.nchars) {
-			oldOrg := v.origin
-			v.origin = v.nextNewLine(3)
-			v.loadText()
-			if v.q1 > v.origin+int64(v.nchars) {
-				// There's no more content, get back.
-				v.origin = oldOrg
-				v.q1--
-				if v.q0 > v.q1 {
-					v.q0 = v.q1
-				}
-				v.loadText()
+	v.q0, v.q1 = q0, q1
+	if v.q1 > v.origin+int64(v.Frame.Nchars) {
+		oldOrg := v.origin
+		v.origin += int64(v.Frame.NextNewLine(3))
+		v.LoadText()
+		if v.q1 > v.origin+int64(v.Frame.Nchars) {
+			// There's no more content, get back.
+			v.origin = oldOrg
+			v.q1--
+			if v.q0 > v.q1 {
+				v.q0 = v.q1
 			}
+			v.LoadText()
 		}
-		v.checkVisibility()
-	case ev.Key == ui.KeyUp:
-		if v.qvis != nil {
-			q := v.findQ(*v.linevis-1, v.wantCol)
-			v.moveVis(q)
-		} else {
-			q := v.findQ(v.line0-1, v.wantCol)
-			v.q0, v.q1 = q, q
-		}
-	case ev.Key == ui.KeyDown:
-		if v.qvis != nil {
-			q := v.findQ(*v.linevis+1, v.wantCol)
-			v.moveVis(q)
-		} else {
-			q := v.findQ(v.line1+1, v.wantCol)
-			v.q0, v.q1 = q, q
-		}
-
-	// Temporary shortcuts:
-	case ev.Key == 'z' && ev.Ctrl:
-		v.buf.Undo()
-	case ev.Key == 'y' && ev.Ctrl:
-		v.buf.Redo()
-	case ev.Key == ui.KeyPageUp:
-		v.origin = v.prevNewLine(v.origin, v.height)
-	case ev.Key == ui.KeyPageDown:
-		v.origin = v.origin + int64(v.nchars)
-	case ev.Key == 'v' && ev.Ctrl:
-		if v.qvis == nil {
-			v.qvis = &v.q0
-			v.linevis = &v.line0
-		} else {
-			v.qvis = nil
-		}
-
-	default:
-		if v.q0 != v.q1 {
-			v.buf.Delete(v.q0, v.q1)
-		}
-		v.buf.Insert(v.q0, string(ev.Key))
-		v.q0, v.q1 = v.q0+1, v.q0+1
-		v.wantCol = colQ1
-		v.checkVisibility()
-		v.qvis = nil
 	}
+	v.checkVisibility()
 }
 
-func (v *View) moveVis(q int64) {
-	*v.qvis = q
-	if v.q1 < v.q0 {
-		v.q0, v.q1 = v.q1, v.q0
-		if v.qvis == &v.q0 {
-			v.qvis = &v.q1
-			v.linevis = &v.line1
-		} else {
-			v.qvis = &v.q0
-			v.linevis = &v.line0
-		}
+func (v *View) Insert(s string) {
+	if v.q0 != v.q1 {
+		v.buf.Delete(v.q0, v.q1)
 	}
+	v.buf.Insert(v.q0, s)
+	v.q0, v.q1 = v.q0+1, v.q0+1
+	v.Frame.WantCol = ColQ1
+	v.checkVisibility()
+}
+
+func (v *View) DelSelected() {
+	v.buf.Delete(v.q0, v.q1)
+	v.q1 = v.q0
+	v.checkVisibility()
 }
 
 func (v *View) checkVisibility() {
-	if v.q0 < v.origin || v.q0 > v.origin+int64(v.nchars)+1 {
-		v.origin = v.prevNewLine(v.q0, 3)
+	if v.q0 < v.origin || v.q0 > v.origin+int64(v.Frame.Nchars)+1 {
+		v.origin = v.PrevNewLine(v.q0, 3)
 	}
 }
 
-func (v *View) prevNewLine(p int64, n int) int64 {
+func (v *View) Undo() { v.buf.Undo() }
+func (v *View) Redo() { v.buf.Redo() }
+
+func (v *View) PrevNewLine(p int64, n int) int64 {
 	for ; n > 0; n-- {
 		// Shorten long lines. After 128 characters call it a line anyway.
 		for i := 0; i < 128 && p > 0; i++ {
@@ -274,57 +186,10 @@ func (v *View) prevNewLine(p int64, n int) int64 {
 	return p
 }
 
-func (v *View) nextNewLine(n int) int64 {
-	c := 0
-	for _, l := range v.lines {
-		c += len(l) + 1 // + '\n'
-		n--
-		if n == 0 {
-			goto NotLastLine
-		}
+func TabWidthForCol(col int) int {
+	w := tabStop - col%tabStop
+	if w == 0 {
+		return tabStop
 	}
-	c-- // last line doesn't contain '\n'
-NotLastLine:
-	return v.origin + int64(c)
-}
-
-func (v *View) findQ(line, col int) int64 {
-	if line < 0 {
-		v.origin = v.prevNewLine(v.origin, -line)
-		v.loadText()
-		line = 0
-	} else if line > len(v.lines)-1 {
-		if len(v.lines) == v.height {
-			i := line - len(v.lines) + 1
-			oldOrg := v.origin
-			l := len(v.lines)
-			v.origin = v.nextNewLine(i)
-			v.loadText()
-			if len(v.lines) < l {
-				v.origin = oldOrg
-				v.loadText()
-			}
-		}
-		line = len(v.lines) - 1
-	}
-	q := v.origin
-	for n, l := range v.lines {
-		if n < line {
-			q += int64(len(l)) + 1 // + '\n'
-			continue
-		}
-		x := 0
-		for i, r := range v.lines[n] {
-			if r == '\t' {
-				x += tabWidthForCol(x)
-			} else {
-				x += 1
-			}
-			if x > col {
-				return q + int64(i)
-			}
-		}
-		return q + int64(len(v.lines[n]))
-	}
-	panic("shouldn't happen")
+	return w
 }
