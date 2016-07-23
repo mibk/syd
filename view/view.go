@@ -18,6 +18,8 @@ type View struct {
 	origin int64
 	q0, q1 int64
 
+	vismode bool
+
 	// Frame
 	lines       [][]rune
 	line0, col0 int
@@ -41,12 +43,16 @@ func (v *View) SetSize(w, h int) {
 }
 
 func (v *View) Render(ui term.UI) {
-	setCursor := func(x, y int) {
-		ui.SetCursor(x, y)
-		v.line0, v.line1 = y, y
-		v.col0, v.col1 = x, x
-		if v.wantCol == -1 {
-			v.wantCol = x
+	attr := uint8(term.AttrDefault)
+	selText := func(p int64, x, y int) {
+		if p == v.q0 {
+			if v.q0 == v.q1 {
+				ui.SetCursor(x, y)
+			} else {
+				attr = term.AttrReverse
+			}
+		} else if p == v.q1 {
+			attr = term.AttrDefault
 		}
 	}
 	v.loadText()
@@ -56,10 +62,8 @@ func (v *View) Render(ui term.UI) {
 	for y, l := range v.lines {
 		x := 0
 		for _, r := range l {
-			ui.SetCell(x, y, r, term.AttrDefault)
-			if p == v.q0 {
-				setCursor(x, y)
-			}
+			selText(p, x, y)
+			ui.SetCell(x, y, r, attr)
 			p++
 			if r == '\t' {
 				x += tabWidthForCol(x)
@@ -67,12 +71,15 @@ func (v *View) Render(ui term.UI) {
 				x++
 			}
 		}
-		if p == v.q0 {
-			setCursor(x, y)
-		}
+		selText(p, x, y)
 		p++
 	}
 }
+
+const (
+	colQ0 = -1
+	colQ1 = -2
+)
 
 func (v *View) loadText() {
 	v.lines = nil
@@ -90,6 +97,18 @@ func (v *View) loadText() {
 		}
 		if r != '\n' {
 			v.lines[y] = append(v.lines[y], r)
+		}
+		if p == v.q0 {
+			v.line0, v.col0 = y, x
+			if v.wantCol == colQ0 {
+				v.wantCol = x
+			}
+		}
+		if p == v.q1 {
+			v.line1, v.col1 = y, x
+			if v.wantCol == colQ1 {
+				v.wantCol = x
+			}
 		}
 
 		if x >= v.width || r == '\n' {
@@ -122,21 +141,35 @@ func (v *View) Type(ev ui.KeyPress) {
 		if v.q0 == 0 {
 			return
 		}
-		v.q0, v.q1 = v.q0-1, v.q0-1
+		if v.q0 == v.q1 {
+			v.q0, v.q1 = v.q0-1, v.q0-1
+		}
 		fallthrough
 	case ev.Key == ui.KeyDelete:
-		v.buf.Delete(v.q0, v.q0+1)
+		q1 := v.q1
+		if v.q0 == v.q1 {
+			q1 = v.q0 + 1
+		}
+		v.q1 = v.q0
+		v.buf.Delete(v.q0, q1)
 		v.checkVisibility()
+		v.vismode = false
 	case ev.Key == ui.KeyLeft:
 		if v.q0 == 0 {
 			return
 		}
-		v.q0, v.q1 = v.q0-1, v.q0-1
-		v.wantCol = -1
+		v.q0--
+		if !v.vismode {
+			v.q1 = v.q0
+		}
+		v.wantCol = colQ0
 		v.checkVisibility()
 	case ev.Key == ui.KeyRight:
-		v.q0, v.q1 = v.q0+1, v.q0+1
-		v.wantCol = -1
+		v.q1++
+		if !v.vismode {
+			v.q0 = v.q1
+		}
+		v.wantCol = colQ1
 		if v.q0 > v.origin+int64(v.nchars) {
 			oldOrg := v.origin
 			v.origin = v.nextNewLine(3)
@@ -144,17 +177,26 @@ func (v *View) Type(ev ui.KeyPress) {
 			if v.q0 > v.origin+int64(v.nchars) {
 				// There's no more content, get back.
 				v.origin = oldOrg
-				v.q0, v.q1 = v.q0-1, v.q0-1
+				v.q1--
+				if v.q0 > v.q1 {
+					v.q0 = v.q1
+				}
 				v.loadText()
 			}
 		}
 		v.checkVisibility()
 	case ev.Key == ui.KeyUp:
 		q := v.findQ(v.line0-1, v.wantCol)
-		v.q0, v.q1 = q, q
+		if !v.vismode {
+			v.q1 = q
+		}
+		v.q0 = q
 	case ev.Key == ui.KeyDown:
 		q := v.findQ(v.line1+1, v.wantCol)
-		v.q0, v.q1 = q, q
+		if !v.vismode {
+			v.q0 = q
+		}
+		v.q1 = q
 
 	// Temporary shortcuts:
 	case ev.Key == 'z' && ev.Ctrl:
@@ -165,12 +207,18 @@ func (v *View) Type(ev ui.KeyPress) {
 		v.origin = v.prevNewLine(v.origin, v.height)
 	case ev.Key == ui.KeyPageDown:
 		v.origin = v.origin + int64(v.nchars)
+	case ev.Key == 'v' && ev.Ctrl:
+		v.vismode = !v.vismode
 
 	default:
+		if v.q0 != v.q1 {
+			v.buf.Delete(v.q0, v.q1)
+		}
 		v.buf.Insert(v.q0, string(ev.Key))
 		v.q0, v.q1 = v.q0+1, v.q0+1
-		v.wantCol = -1
+		v.wantCol = colQ1
 		v.checkVisibility()
+		v.vismode = false
 	}
 }
 
