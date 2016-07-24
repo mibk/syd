@@ -1,0 +1,37 @@
+{
+	"comment": "",
+	"ignore": "",
+	"package": [
+		{
+			"checksumSHA1": "6hoza5i1wSFVrZV6bUxWBEfZ0To=",
+			"path": "github.com/edsrzf/mmap-go",
+			"revision": "935e0e8a636ca4ba70b713f3e38a19e1b77739e8",
+			"revisionTime": "2016-05-12T03:30:02Z"
+		},
+		{
+			"checksumSHA1": "WwRZD64uS29rcujF+StVE2xmMBo=",
+			"path": "github.com/gdamore/encoding",
+			"revision": "b23993cbb6353f0e6aa98d0ee318a34728f628b9",
+			"revisionTime": "2015-12-15T21:28:35Z"
+		},
+		{
+			"checksumSHA1": "CtjrJdL3b0v0bJKjdMsjc+NfqpI=",
+			"path": "github.com/gdamore/tcell",
+			"revision": "ad43f8729b5d13a9577ee3c0278974f8026ffdda",
+			"revisionTime": "2016-05-24T08:26:09Z"
+		},
+		{
+			"checksumSHA1": "Ym2muHZSIoj7WFsjCx4GOdf+QAw=",
+			"path": "github.com/lucasb-eyer/go-colorful",
+			"revision": "e524a63fc3d334b573e6c1060c9b5866cf236626",
+			"revisionTime": "2015-09-07T06:51:37Z"
+		},
+		{
+			"checksumSHA1": "e7VwIz4LWIuXvWkKBZ11IQ9Y5Aw=",
+			"path": "github.com/mattn/go-runewidth",
+			"revision": "5890272cd41c5103531cd7b79e428d99c9e97f76",
+			"revisionTime": "2015-05-27T10:19:16Z"
+		}
+	],
+	"rootPath": "github.com/mibk/syd"
+}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -19,7 +20,11 @@ var (
 )
 
 func main() {
-	win.Init()
+	log.SetPrefix("syd: ")
+	log.SetFlags(0)
+	if err := win.Init(); err != nil {
+		log.Fatalln("initializing ui:", err)
+	}
 	defer win.Close()
 
 	var b []byte
