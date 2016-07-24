@@ -3,7 +3,7 @@ package vi
 import (
 	"strconv"
 
-	"github.com/mibk/syd/event"
+	"github.com/mibk/syd/ui"
 )
 
 type Command struct {
@@ -15,28 +15,28 @@ type Motion func(num int)
 
 type commandNode struct {
 	Command
-	children map[event.KeyPress]*commandNode
+	children map[ui.KeyPress]*commandNode
 }
 
 func newCommandNode() *commandNode {
-	return &commandNode{children: make(map[event.KeyPress]*commandNode)}
+	return &commandNode{children: make(map[ui.KeyPress]*commandNode)}
 }
 
 type motionNode struct {
 	motion   Motion
-	children map[event.KeyPress]*motionNode
+	children map[ui.KeyPress]*motionNode
 }
 
 func newMotionNode() *motionNode {
-	return &motionNode{children: make(map[event.KeyPress]*motionNode)}
+	return &motionNode{children: make(map[ui.KeyPress]*motionNode)}
 }
 
 type Parser struct {
 	commandTree *commandNode
 	motionTree  *motionNode
 
-	presses chan event.KeyPress
-	peeked  *event.KeyPress
+	presses chan ui.KeyPress
+	peeked  *ui.KeyPress
 	Actions chan func()
 }
 
@@ -44,7 +44,7 @@ func NewParser() *Parser {
 	p := &Parser{
 		commandTree: newCommandNode(),
 		motionTree:  newMotionNode(),
-		presses:     make(chan event.KeyPress),
+		presses:     make(chan ui.KeyPress),
 
 		// Make it a buffered channel because of aliases.
 		Actions: make(chan func(), 2),
@@ -60,7 +60,7 @@ var RequiresMotion = func(c Command) Command {
 	return c
 }
 
-func (p *Parser) AddCommand(seq []event.KeyPress, f func(num int),
+func (p *Parser) AddCommand(seq []ui.KeyPress, f func(num int),
 	opts ...func(Command) Command) {
 	cmd := Command{action: f}
 	for _, opt := range opts {
@@ -78,7 +78,7 @@ func (p *Parser) AddCommand(seq []event.KeyPress, f func(num int),
 	n.action = cmd.action
 }
 
-func (p *Parser) AddMotion(seq []event.KeyPress, motion Motion) {
+func (p *Parser) AddMotion(seq []ui.KeyPress, motion Motion) {
 	n := p.motionTree
 	for _, k := range seq {
 		if _, ok := n.children[k]; !ok {
@@ -89,11 +89,11 @@ func (p *Parser) AddMotion(seq []event.KeyPress, motion Motion) {
 	n.motion = motion
 }
 
-func (p *Parser) Decode(k event.KeyPress) {
+func (p *Parser) Decode(k ui.KeyPress) {
 	p.presses <- k
 }
 
-func (p *Parser) next() event.KeyPress {
+func (p *Parser) next() ui.KeyPress {
 	if p.peeked != nil {
 		r := *p.peeked
 		p.peeked = nil
@@ -102,7 +102,7 @@ func (p *Parser) next() event.KeyPress {
 	return <-p.presses
 }
 
-func (p *Parser) peek() event.KeyPress {
+func (p *Parser) peek() ui.KeyPress {
 	if p.peeked == nil {
 		r := <-p.presses
 		p.peeked = &r
@@ -168,7 +168,7 @@ Loop:
 
 }
 
-func isDigit(k event.KeyPress) bool {
+func isDigit(k ui.KeyPress) bool {
 	return k.Key >= '1' && k.Key <= '9'
 }
 
@@ -185,14 +185,14 @@ func (p *Parser) parseNum() int {
 	return num
 }
 
-func (p *Parser) AddAlias(alias, seq []event.KeyPress) {
+func (p *Parser) AddAlias(alias, seq []ui.KeyPress) {
 	a := func(num int) {
 		seq := seq
 		if num != 0 {
 			for _, k := range numToKeyPresses(num) {
 				p.Decode(k)
 			}
-			min := event.Key('1')
+			min := '1'
 			for i, k := range seq {
 				if k.Ctrl == false && k.Alt == false &&
 					k.Key >= min && k.Key <= '9' {
@@ -210,22 +210,11 @@ func (p *Parser) AddAlias(alias, seq []event.KeyPress) {
 	p.AddCommand(alias, a)
 }
 
-func numToKeyPresses(n int) []event.KeyPress {
+func numToKeyPresses(n int) []ui.KeyPress {
 	a := strconv.Itoa(n)
-	keys := make([]event.KeyPress, 0, len(a))
+	keys := make([]ui.KeyPress, 0, len(a))
 	for _, d := range a {
-		keys = append(keys, event.KeyPress{Key: event.Key(d)})
+		keys = append(keys, ui.KeyPress{Key: d})
 	}
 	return keys
-}
-
-func DoNTimes(f func()) func(num int) {
-	return func(num int) {
-		if num == 0 {
-			num = 1
-		}
-		for i := 0; i < num; i++ {
-			f()
-		}
-	}
 }

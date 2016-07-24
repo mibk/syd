@@ -28,62 +28,63 @@ func handleKeyPress(v *view.View, ev ui.KeyPress) {
 		v.DelSelected()
 		qvis = -1
 	case ev.Key == ui.KeyLeft:
-		if qvis == -1 {
-			q0, _ := v.Selected()
-			v.Select(q0-1, q0-1)
-		} else {
-			vismove(v, -1)
-		}
-		v.Frame.WantCol = view.ColQ0
+		left(v)
 	case ev.Key == ui.KeyRight:
-		if qvis == -1 {
-			_, q1 := v.Selected()
-			v.Select(q1+1, q1+1)
-		} else {
-			vismove(v, +1)
-		}
-		v.Frame.WantCol = view.ColQ1
+		right(v)
 
 	case ev.Key == ui.KeyUp:
-		if qvis == -1 {
-			q := findQ(v, v.Frame.Line1-1)
-			v.Select(q, q)
-		} else {
-			qv, line := visQAndLine(v)
-			q := findQ(v, line-1)
-			vismove(v, q-qv)
-		}
+		up(v)
 	case ev.Key == ui.KeyDown:
-		if qvis == -1 {
-			q := findQ(v, v.Frame.Line1+1)
-			v.Select(q, q)
-		} else {
-			qv, line := visQAndLine(v)
-			q := findQ(v, line+1)
-			vismove(v, q-qv)
-		}
+		down(v)
 
-	// Temporary shortcuts:
-	case ev.Key == 'z' && ev.Ctrl:
-		v.Undo()
-	case ev.Key == 'y' && ev.Ctrl:
-		v.Redo()
-	case ev.Key == ui.KeyPageUp:
-		_, h := v.Size()
-		v.SetOrigin(v.PrevNewLine(v.Origin(), h))
-	case ev.Key == ui.KeyPageDown:
-		v.SetOrigin(v.Origin() + int64(v.Frame.Nchars))
 	case ev.Key == 'v' && ev.Ctrl:
-		if qvis == -1 {
-			qvis = 0
-			linevis = 0
-		} else {
-			qvis = -1
-		}
+		visualMode(v)
 
 	default:
 		v.Insert(string(ev.Key))
 		qvis = -1
+	}
+}
+
+func left(v *view.View) {
+	if qvis == -1 {
+		q0, _ := v.Selected()
+		v.Select(q0-1, q0-1)
+	} else {
+		vismove(v, -1)
+	}
+	v.Frame.WantCol = view.ColQ0
+}
+
+func right(v *view.View) {
+	if qvis == -1 {
+		_, q1 := v.Selected()
+		v.Select(q1+1, q1+1)
+	} else {
+		vismove(v, +1)
+	}
+	v.Frame.WantCol = view.ColQ1
+}
+
+func up(v *view.View) {
+	if qvis == -1 {
+		q := findQ(v, v.Frame.Line1-1)
+		v.Select(q, q)
+	} else {
+		qv, line := visQAndLine(v)
+		q := findQ(v, line-1)
+		vismove(v, q-qv)
+	}
+}
+
+func down(v *view.View) {
+	if qvis == -1 {
+		q := findQ(v, v.Frame.Line1+1)
+		v.Select(q, q)
+	} else {
+		qv, line := visQAndLine(v)
+		q := findQ(v, line+1)
+		vismove(v, q-qv)
 	}
 }
 
@@ -129,6 +130,14 @@ func findQ(v *view.View, line int) int64 {
 	panic("shouldn't happen")
 }
 
+func visQAndLine(v *view.View) (q int64, line int) {
+	q0, q1 := v.Selected()
+	if qvis == 0 {
+		return q0, v.Frame.Line0
+	}
+	return q1, v.Frame.Line1
+}
+
 func vismove(v *view.View, d int64) {
 	q0, q1 := v.Selected()
 	var q *int64
@@ -151,10 +160,20 @@ func vismove(v *view.View, d int64) {
 	v.Select(q0, q1)
 }
 
-func visQAndLine(v *view.View) (q int64, line int) {
-	q0, q1 := v.Selected()
-	if qvis == 0 {
-		return q0, v.Frame.Line0
+func pageUp(v *view.View) {
+	_, h := v.Size()
+	v.SetOrigin(v.PrevNewLine(v.Origin(), h))
+}
+
+func pageDown(v *view.View) {
+	v.SetOrigin(v.Origin() + int64(v.Frame.Nchars))
+}
+
+func visualMode(v *view.View) {
+	if qvis == -1 {
+		qvis = 0
+		linevis = 0
+	} else {
+		qvis = -1
 	}
-	return q1, v.Frame.Line1
 }
