@@ -25,8 +25,8 @@ func New(buf *core.Buffer) *View {
 }
 
 // Size returns the size of v.
-func (v *View) Size() (int, int) {
-	return v.height, v.width
+func (v *View) Size() (w, h int) {
+	return v.width, v.height
 }
 
 // SetSize sets the size of v.
@@ -76,15 +76,6 @@ func (v *View) LoadText() {
 		if len(v.Frame.Lines) <= y {
 			v.Frame.Lines = append(v.Frame.Lines, nil)
 		}
-		r, _, err := v.buf.ReadRuneAt(p)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			panic(err)
-		}
-		if r != '\n' {
-			v.Frame.Lines[y] = append(v.Frame.Lines[y], r)
-		}
 		if p == v.q0 {
 			v.Frame.Line0, v.Frame.Col0 = y, x
 			if v.Frame.WantCol == ColQ0 {
@@ -96,6 +87,15 @@ func (v *View) LoadText() {
 			if v.Frame.WantCol == ColQ1 {
 				v.Frame.WantCol = x
 			}
+		}
+		r, _, err := v.buf.ReadRuneAt(p)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			panic(err)
+		}
+		if r != '\n' {
+			v.Frame.Lines[y] = append(v.Frame.Lines[y], r)
 		}
 
 		if x >= v.width || r == '\n' {
