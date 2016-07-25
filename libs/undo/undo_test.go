@@ -152,7 +152,7 @@ func TestSaving(t *testing.T) {
 	b.insertString(0, "stars can frighten")
 	b.checkModified(t, 2, true)
 
-	b.Save()
+	b.Clean()
 	b.checkModified(t, 3, false)
 
 	b.Undo()
@@ -168,7 +168,7 @@ func TestSaving(t *testing.T) {
 	b.Redo()
 	b.checkModified(t, 8, true)
 
-	b.Save()
+	b.Clean()
 	b.checkModified(t, 9, false)
 
 	b = NewBuffer([]byte("my book is closed"))
@@ -180,11 +180,11 @@ func TestSaving(t *testing.T) {
 	b.checkModified(t, 12, false)
 
 	b.Redo()
-	b.Save()
+	b.Clean()
 	b.checkModified(t, 13, false)
 
 	b.Undo()
-	b.Save()
+	b.Clean()
 	b.checkModified(t, 14, false)
 }
 
@@ -271,7 +271,7 @@ func (t *Buffer) printPieces() {
 }
 
 func (b *Buffer) checkModified(t *testing.T, id int, expected bool) {
-	if b.Modified() != expected {
+	if b.Dirty() != expected {
 		if expected {
 			t.Errorf("#%d should be modified", id)
 		} else {

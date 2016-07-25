@@ -454,8 +454,8 @@ func (b *Buffer) CommitChanges() {
 	b.cachedPiece = nil
 }
 
-// Save the current state.
-func (b *Buffer) Save() {
+// Clean marks the buffer as non-dirty.
+func (b *Buffer) Clean() {
 	if b.head > 0 {
 		b.savedAction = b.actions[b.head-1]
 	} else {
@@ -463,9 +463,9 @@ func (b *Buffer) Save() {
 	}
 }
 
-// Modified reports whether the current state of b is different from the one
-// in the time of calling Save.
-func (b *Buffer) Modified() bool {
+// Dirty reports whether the current state of the buffer is different from the
+// initial state or from the one in the time of calling Clean.
+func (b *Buffer) Dirty() bool {
 	return b.head == 0 && b.savedAction != nil ||
 		b.head > 0 && b.savedAction != b.actions[b.head-1]
 }

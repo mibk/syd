@@ -189,7 +189,7 @@ func (syd *Syd) printFoot() {
 	if filename == "" {
 		filename = "[No Name]"
 	}
-	if syd.buffer.Modified() {
+	if syd.buffer.Dirty() {
 		filename += " [+]"
 	}
 	print(0, h-2, filename, term.AttrReverse|term.AttrBold)
