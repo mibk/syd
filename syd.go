@@ -47,7 +47,7 @@ func main() {
 	}
 	mapCommands(syd)
 	go syd.RouteEvents()
-	syd.NormalMode()
+	syd.Main()
 }
 
 func readFile(filename string) (mmap.MMap, error) {
@@ -119,40 +119,63 @@ func (syd *Syd) AddStringMotion(cmd string, fn func(*view.View, int)) {
 	syd.AddMotion(parseKeys(cmd), fn)
 }
 
-func (syd *Syd) NormalMode() {
+func (syd *Syd) Main() {
+	var (
+		lastQ     int64 = -1
+		timestamp time.Time
+	)
 	for !syd.shouldQuit {
 		w, h := win.Size()
 		syd.activeView.SetSize(w, h-2) // 2 for the footer
 		syd.activeView.Render(win)
 		syd.printFoot()
+		if syd.mode == ModeInsert {
+			print(0, h-1, "-- INSERT --", term.AttrBold)
+		}
 		win.Flush()
 
-		action := <-syd.vi.Actions
-		action()
-	}
-}
-
-func (syd *Syd) InsertMode() {
-	syd.mode = ModeInsert
-	defer func() { syd.mode = ModeNormal }()
-	for {
-		w, h := win.Size()
-		syd.activeView.SetSize(w, h-2) // 2 for the footer
-		syd.activeView.Render(win)
-		syd.printFoot()
-		print(0, h-1, "-- INSERT --", term.AttrBold)
-		win.Flush()
 		select {
+		case action := <-syd.vi.Actions:
+			action()
 		case ev := <-syd.events:
 			switch ev := ev.(type) {
 			case ui.KeyPress:
 				if ev.Key == ui.KeyEscape {
-					return
+					syd.mode = ModeNormal
+					continue
 				}
 				handleKeyPress(syd.activeView, ev)
+			case ui.MouseBtnPress:
+				switch ev.Button {
+				case ui.MouseButton1:
+					p := syd.activeView.Frame.CharsToXY(ev.X, ev.Y)
+					q := syd.activeView.Origin() + int64(p)
+					if time.Since(timestamp) < 300*time.Millisecond {
+						syd.activeView.Select(dblclick(syd.activeView, q))
+						lastQ = -1
+						continue
+					}
+					syd.activeView.Select(q, q)
+					lastQ = q
+					timestamp = time.Now()
+				case ui.MouseWheelUp:
+					scrollUp(syd.activeView, 3)
+				case ui.MouseWheelDown:
+					scrollDown(syd.activeView, 3)
+				}
+			case ui.MouseBtnRelease:
+				lastQ = -1
+			case ui.MouseMove:
+				if lastQ < 0 {
+					continue
+				}
+				p := syd.activeView.Frame.CharsToXY(ev.X, ev.Y)
+				q0, q1 := lastQ, syd.activeView.Origin()+int64(p)
+				if q1 < q0 {
+					q0, q1 = q1, q0
+				}
+				syd.activeView.Select(q0, q1)
 			}
-		case <-time.After(3 * time.Second):
-			syd.buffer.CommitChanges()
 		}
 	}
 }

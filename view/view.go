@@ -186,6 +186,11 @@ func (v *View) PrevNewLine(p int64, n int) int64 {
 	return p
 }
 
+func (v *View) ReadRuneAt(off int64) (rune, error) {
+	r, _, err := v.buf.ReadRuneAt(off)
+	return r, err
+}
+
 func TabWidthForCol(col int) int {
 	w := tabStop - col%tabStop
 	if w == 0 {

@@ -13,6 +13,8 @@ const (
 
 type UI struct {
 	screen tcell.Screen
+
+	wasBtnPressed bool
 }
 
 func (t *UI) Init() error {
@@ -23,6 +25,7 @@ func (t *UI) Init() error {
 	if err := sc.Init(); err != nil {
 		return err
 	}
+	sc.EnableMouse()
 	t.screen = sc
 	go t.translateEvents()
 	return nil
@@ -146,6 +149,46 @@ func (t *UI) translateEvents() {
 			}
 			if mod&tcell.ModAlt > 0 {
 				ev.Alt = true
+			}
+			ui.Events <- ev
+		case *tcell.EventMouse:
+			btns := termEv.Buttons()
+			if btns == 0 {
+				if t.wasBtnPressed {
+					t.wasBtnPressed = false
+					var ev ui.MouseBtnRelease
+					ev.X, ev.Y = termEv.Position()
+					ui.Events <- ev
+				} else {
+					var ev ui.MouseMove
+					ev.X, ev.Y = termEv.Position()
+					ui.Events <- ev
+				}
+				continue
+			} else if t.wasBtnPressed {
+				var ev ui.MouseMove
+				ev.X, ev.Y = termEv.Position()
+				ui.Events <- ev
+				continue
+			}
+			var ev ui.MouseBtnPress
+			ev.X, ev.Y = termEv.Position()
+			switch {
+			case btns&tcell.Button1 > 0:
+				ev.Button = ui.MouseButton1
+				t.wasBtnPressed = true
+			case btns&tcell.Button2 > 0:
+				ev.Button = ui.MouseButton2
+				t.wasBtnPressed = true
+			case btns&tcell.Button3 > 0:
+				ev.Button = ui.MouseButton3
+				t.wasBtnPressed = true
+			case btns&tcell.WheelUp > 0:
+				ev.Button = ui.MouseWheelUp
+			case btns&tcell.WheelDown > 0:
+				ev.Button = ui.MouseWheelDown
+			default:
+				continue
 			}
 			ui.Events <- ev
 		}

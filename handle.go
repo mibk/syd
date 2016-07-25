@@ -1,6 +1,8 @@
 package main
 
 import (
+	"unicode"
+
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/view"
 )
@@ -114,18 +116,7 @@ func findQ(v *view.View, line int) int64 {
 			q += int64(len(l)) + 1 // + '\n'
 			continue
 		}
-		x := 0
-		for i, r := range v.Frame.Lines[n] {
-			if r == '\t' {
-				x += view.TabWidthForCol(x)
-			} else {
-				x += 1
-			}
-			if x > v.Frame.WantCol {
-				return q + int64(i)
-			}
-		}
-		return q + int64(len(v.Frame.Lines[n]))
+		return q + int64(view.CharsToX(v.Frame.Lines[n], v.Frame.WantCol))
 	}
 	panic("shouldn't happen")
 }
@@ -162,11 +153,20 @@ func vismove(v *view.View, d int64) {
 
 func pageUp(v *view.View) {
 	_, h := v.Size()
-	v.SetOrigin(v.PrevNewLine(v.Origin(), h))
+	scrollUp(v, h)
+}
+
+func scrollUp(v *view.View, nlines int) {
+	v.SetOrigin(v.PrevNewLine(v.Origin(), nlines))
 }
 
 func pageDown(v *view.View) {
-	v.SetOrigin(v.Origin() + int64(v.Frame.Nchars))
+	_, h := v.Size()
+	scrollDown(v, h)
+}
+
+func scrollDown(v *view.View, nlines int) {
+	v.SetOrigin(v.Origin() + int64(v.Frame.CharsToXY(0, nlines)))
 }
 
 func visualMode(v *view.View) {
@@ -177,3 +177,24 @@ func visualMode(v *view.View) {
 		qvis = -1
 	}
 }
+
+func dblclick(v *view.View, q int64) (q0, q1 int64) {
+	q0, q1 = q, q
+	for q0 > 0 {
+		r, err := v.ReadRuneAt(q0 - 1)
+		if err != nil || !isAlphaNumeric(r) {
+			break
+		}
+		q0--
+	}
+	for {
+		r, err := v.ReadRuneAt(q1)
+		if err != nil || !isAlphaNumeric(r) {
+			break
+		}
+		q1++
+	}
+	return
+}
+
+func isAlphaNumeric(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }

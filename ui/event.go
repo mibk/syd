@@ -1,5 +1,9 @@
 package ui
 
+var Events = make(chan Event)
+
+type Event interface{}
+
 const (
 	KeyEnter     = '\n'
 	KeyEscape    = 0x1B
@@ -15,11 +19,29 @@ const (
 	KeyPageDown
 )
 
-type Event interface{}
-
 type KeyPress struct {
 	Key       rune
 	Ctrl, Alt bool
 }
 
-var Events = make(chan Event)
+const (
+	MouseButton1 = 1 + iota
+	MouseButton2
+	MouseButton3
+
+	MouseWheelUp
+	MouseWheelDown
+)
+
+type MouseBtnPress struct {
+	X, Y   int
+	Button int
+}
+
+type MouseBtnRelease struct {
+	X, Y int
+}
+
+type MouseMove struct {
+	X, Y int
+}

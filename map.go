@@ -26,9 +26,7 @@ func mapCommands(syd *Syd) {
 	syd.AddStringCommand("u", doNTimes((*view.View).Undo))
 	syd.AddCommand([]ui.KeyPress{{Key: 'r', Ctrl: true}}, doNTimes((*view.View).Redo))
 
-	syd.AddStringCommand("i", doOnce(func(*view.View) {
-		syd.InsertMode()
-	}))
+	syd.AddStringCommand("i", doOnce(func(*view.View) { syd.mode = ModeInsert }))
 }
 
 func doOnce(fn func(*view.View)) func(*view.View, int) {
