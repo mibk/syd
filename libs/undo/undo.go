@@ -302,21 +302,9 @@ func (b *Buffer) Delete(pos, length int64) error {
 	p, offset := b.findPiece(pos)
 	if p == nil {
 		return ErrWrongPos
-	} else if p == b.cachedPiece {
-		p := p
-		offset := offset
-		if offset == p.len() {
-			// if the offset is in the end, try to update the next piece
-			p = p.next
-			if p == nil {
-				panic("p shouldn't be nil")
-			}
-			offset = 0
-		}
+	} else if p == b.cachedPiece && p.delete(offset, length) {
 		// try to update the last inserted piece if the length doesn't exceed
-		if p.delete(offset, length) {
-			return nil
-		}
+		return nil
 	}
 	b.cachedPiece = nil
 

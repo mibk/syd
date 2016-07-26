@@ -120,6 +120,15 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+func TestDeleteAtTheEndOfCachedPiece(t *testing.T) {
+	b := NewBuffer([]byte("Original data."))
+	b.cacheInsertString(8, ",")
+	b.cacheDelete(9, 1)
+	b.checkContent("#0", t, "Original,data.")
+	b.Undo()
+	b.checkContent("#1", t, "Original data.")
+}
+
 func TestGroupChanges(t *testing.T) {
 	b := NewBuffer([]byte("group 1, group 2, group 3"))
 	b.checkPiecesCnt(t, 3)
