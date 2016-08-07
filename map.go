@@ -16,12 +16,7 @@ func mapCommands(syd *Syd) {
 	syd.AddCommand([]ui.KeyPress{{Key: 'f', Ctrl: true}}, doNTimes(pageDown))
 	syd.AddCommand([]ui.KeyPress{{Key: 'b', Ctrl: true}}, doNTimes(pageUp))
 
-	syd.AddStringCommand("v", doNTimes(visualMode))
-
-	syd.AddStringCommand("d", doNTimes(func(v *view.View) {
-		v.DelSelected()
-		qvis = -1
-	}))
+	syd.AddStringCommand("d", doNTimes(func(v *view.View) { v.DelSelected() }))
 
 	syd.AddStringCommand("u", doNTimes((*view.View).Undo))
 	syd.AddCommand([]ui.KeyPress{{Key: 'r', Ctrl: true}}, doNTimes((*view.View).Redo))
