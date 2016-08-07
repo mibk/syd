@@ -1,18 +1,18 @@
 package term
 
 import (
+	"io"
+
 	"github.com/gdamore/tcell"
 	"github.com/mibk/syd/ui"
 )
 
-const (
-	AttrDefault = 0
-	AttrReverse = 1 << iota
-	AttrBold
-)
-
 type UI struct {
 	screen tcell.Screen
+	frame  *Frame
+
+	p0, p1 int // cursor position
+	x, y   int // current position
 
 	wasBtnPressed bool
 }
@@ -27,6 +27,7 @@ func (t *UI) Init() error {
 	}
 	sc.EnableMouse()
 	t.screen = sc
+	t.frame = new(Frame)
 	go t.translateEvents()
 	return nil
 }
@@ -36,161 +37,146 @@ func (t *UI) Close() error {
 	return nil
 }
 
-func (t *UI) SetCursor(x, y int) {
-	t.screen.ShowCursor(x, y)
-}
-
-func (t *UI) SetCell(x, y int, r rune, attrs uint8) {
-	st := tcell.StyleDefault
-	if attrs&AttrReverse > 0 {
-		st = st.Reverse(true)
-	}
-	if attrs&AttrBold > 0 {
-		st = st.Bold(true)
-	}
-	t.screen.SetContent(x, y, r, nil, st)
-}
-
-func (t *UI) Clear() { t.screen.Clear() }
-
-func (t *UI) Flush() { t.screen.Show() }
-
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
-func (t *UI) translateEvents() {
-	for {
-		termEv := t.screen.PollEvent()
-		switch termEv := termEv.(type) {
-		case *tcell.EventKey:
-			var ev ui.KeyPress
-			switch termEv.Key() {
-			case tcell.KeyCtrlSpace:
-				ev.Key, ev.Ctrl = ' ', true
-			case tcell.KeyCtrlA:
-				ev.Key, ev.Ctrl = 'a', true
-			case tcell.KeyCtrlB:
-				ev.Key, ev.Ctrl = 'b', true
-			case tcell.KeyCtrlC:
-				ev.Key, ev.Ctrl = 'c', true
-			case tcell.KeyCtrlD:
-				ev.Key, ev.Ctrl = 'd', true
-			case tcell.KeyCtrlE:
-				ev.Key, ev.Ctrl = 'e', true
-			case tcell.KeyCtrlF:
-				ev.Key, ev.Ctrl = 'f', true
-			case tcell.KeyCtrlG:
-				ev.Key, ev.Ctrl = 'g', true
+func (t *UI) Clear() {
+	t.screen.Clear()
+	*t.frame = Frame{
+		lines:   make([][]rune, 1),
+		wantCol: t.frame.wantCol,
+	}
+	t.x, t.y = 0, 0
+	t.checkSelection()
+}
 
-			case tcell.KeyCtrlJ:
-				ev.Key, ev.Ctrl = 'j', true
-			case tcell.KeyCtrlK:
-				ev.Key, ev.Ctrl = 'k', true
-			case tcell.KeyCtrlL:
-				ev.Key, ev.Ctrl = 'l', true
+func (t *UI) Select(p0, p1 int) { t.p0, t.p1 = p0, p1 }
 
-			case tcell.KeyCtrlN:
-				ev.Key, ev.Ctrl = 'n', true
-			case tcell.KeyCtrlO:
-				ev.Key, ev.Ctrl = 'o', true
-			case tcell.KeyCtrlP:
-				ev.Key, ev.Ctrl = 'p', true
-			case tcell.KeyCtrlQ:
-				ev.Key, ev.Ctrl = 'q', true
-			case tcell.KeyCtrlR:
-				ev.Key, ev.Ctrl = 'r', true
-			case tcell.KeyCtrlS:
-				ev.Key, ev.Ctrl = 's', true
-			case tcell.KeyCtrlT:
-				ev.Key, ev.Ctrl = 't', true
-			case tcell.KeyCtrlU:
-				ev.Key, ev.Ctrl = 'u', true
-			case tcell.KeyCtrlV:
-				ev.Key, ev.Ctrl = 'v', true
-			case tcell.KeyCtrlW:
-				ev.Key, ev.Ctrl = 'w', true
-			case tcell.KeyCtrlX:
-				ev.Key, ev.Ctrl = 'x', true
-			case tcell.KeyCtrlY:
-				ev.Key, ev.Ctrl = 'y', true
-			case tcell.KeyCtrlZ:
-				ev.Key, ev.Ctrl = 'z', true
+func (t *UI) WriteRune(r rune) error {
+	if r != '\n' {
+		t.frame.lines[t.y] = append(t.frame.lines[t.y], r)
+	}
 
-			case tcell.KeyEnter:
-				ev.Key = ui.KeyEnter
-			case tcell.KeyTab:
-				ev.Key = '\t'
-			case tcell.KeyBackspace, tcell.KeyBackspace2:
-				ev.Key = ui.KeyBackspace
-			case tcell.KeyDelete:
-				ev.Key = ui.KeyDelete
-			case tcell.KeyEscape:
-				ev.Key = ui.KeyEscape
-			case tcell.KeyLeft:
-				ev.Key = ui.KeyLeft
-			case tcell.KeyRight:
-				ev.Key = ui.KeyRight
-			case tcell.KeyUp:
-				ev.Key = ui.KeyUp
-			case tcell.KeyDown:
-				ev.Key = ui.KeyDown
-			case tcell.KeyPgUp:
-				ev.Key = ui.KeyPageUp
-			case tcell.KeyPgDn:
-				ev.Key = ui.KeyPageDown
-			case tcell.KeyRune:
-				ev.Key = termEv.Rune()
-			default:
-				continue
-			}
+	w, h := t.Size()
+	if t.x >= w || r == '\n' {
+		t.y++
+		t.x = 0
+		t.frame.lines = append(t.frame.lines, nil)
+		if t.y == h {
+			return io.EOF
+		}
+	} else if r == '\t' {
+		t.x += tabWidthForCol(t.x)
+	} else {
+		t.x++
+	}
+	t.frame.nchars++
+	t.checkSelection()
+	return nil
+}
 
-			mod := termEv.Modifiers()
-			if mod&tcell.ModCtrl > 0 {
-				ev.Ctrl = true
-			}
-			if mod&tcell.ModAlt > 0 {
-				ev.Alt = true
-			}
-			ui.Events <- ev
-		case *tcell.EventMouse:
-			btns := termEv.Buttons()
-			if btns == 0 {
-				if t.wasBtnPressed {
-					t.wasBtnPressed = false
-					var ev ui.MouseBtnRelease
-					ev.X, ev.Y = termEv.Position()
-					ui.Events <- ev
-				} else {
-					var ev ui.MouseMove
-					ev.X, ev.Y = termEv.Position()
-					ui.Events <- ev
-				}
-				continue
-			} else if t.wasBtnPressed {
-				var ev ui.MouseMove
-				ev.X, ev.Y = termEv.Position()
-				ui.Events <- ev
-				continue
-			}
-			var ev ui.MouseBtnPress
-			ev.X, ev.Y = termEv.Position()
-			switch {
-			case btns&tcell.Button1 > 0:
-				ev.Button = ui.MouseButton1
-				t.wasBtnPressed = true
-			case btns&tcell.Button2 > 0:
-				ev.Button = ui.MouseButton2
-				t.wasBtnPressed = true
-			case btns&tcell.Button3 > 0:
-				ev.Button = ui.MouseButton3
-				t.wasBtnPressed = true
-			case btns&tcell.WheelUp > 0:
-				ev.Button = ui.MouseWheelUp
-			case btns&tcell.WheelDown > 0:
-				ev.Button = ui.MouseWheelDown
-			default:
-				continue
-			}
-			ui.Events <- ev
+// checkSelection tries to line0, line1, and wantCol.
+func (t *UI) checkSelection() {
+	if t.p0 == t.frame.nchars {
+		t.frame.line0 = t.y
+		if t.frame.wantCol == ui.ColQ0 {
+			t.frame.wantCol = t.x
+		}
+	}
+	if t.p1 == t.frame.nchars {
+		t.frame.line1 = t.y
+		if t.frame.wantCol == ui.ColQ1 {
+			t.frame.wantCol = t.x
 		}
 	}
 }
+
+func (t *UI) Flush() {
+	st := tcell.StyleDefault
+	selText := func(p, x, y int) {
+		if p == t.p0 {
+			if t.p0 == t.p1 {
+				t.screen.ShowCursor(x, y)
+			} else {
+				st = st.Reverse(true)
+			}
+		} else if p == t.p1 {
+			st = st.Reverse(false)
+		}
+	}
+	t.screen.HideCursor()
+	p := 0
+	for y, l := range t.frame.lines {
+		x := 0
+		for _, r := range l {
+			selText(p, x, y)
+			t.screen.SetContent(x, y, r, nil, st)
+			p++
+			if r == '\t' {
+				x += tabWidthForCol(x)
+			} else {
+				x++
+			}
+		}
+		selText(p, x, y)
+		p++
+	}
+	t.screen.Show()
+}
+
+func (t *UI) Frame() ui.Frame { return t.frame }
+
+type Frame struct {
+	lines   [][]rune
+	line0   int
+	line1   int
+	wantCol int
+	nchars  int
+}
+
+func (f *Frame) Nchars() int                { return f.nchars }
+func (f *Frame) SelectionLines() (int, int) { return f.line0, f.line1 }
+
+func (f *Frame) CharsUntilXY(x, y int) int {
+	if y >= len(f.lines) {
+		return f.nchars
+	}
+	var p int
+	for n, l := range f.lines {
+		if n == y {
+			return p + charsUntilX(l, x)
+		}
+		p += len(l) + 1 // + '\n'
+	}
+	panic("shouldn't happen")
+}
+
+func charsUntilX(s []rune, x int) int {
+	var w int
+	for i, r := range s {
+		if r == '\t' {
+			w += tabWidthForCol(w)
+		} else {
+			w += 1
+		}
+		if w > x {
+			return i
+		}
+	}
+	return len(s)
+}
+
+const tabStop = 8
+
+func tabWidthForCol(col int) int {
+	w := tabStop - col%tabStop
+	if w == 0 {
+		return tabStop
+	}
+	return w
+}
+
+func (f *Frame) MaxLines() int { panic("not implemented") }
+func (f *Frame) Lines() int    { return len(f.lines) }
+
+func (f *Frame) WantCol() int       { return f.wantCol }
+func (f *Frame) SetWantCol(col int) { f.wantCol = col }

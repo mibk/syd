@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	win      term.UI
+	win      = &term.UI{}
 	filename = ""
 )
 
@@ -43,7 +43,7 @@ func main() {
 		events:     make(chan ui.Event),
 		vi:         vi.NewParser(),
 		buffer:     buf,
-		activeView: view.New(core.NewBuffer(buf)),
+		activeView: view.New(win, core.NewBuffer(buf)),
 	}
 	mapCommands(syd)
 	go syd.RouteEvents()
@@ -61,13 +61,6 @@ func readFile(filename string) (mmap.MMap, error) {
 		return nil, err
 	}
 	return m, nil
-}
-
-func print(x, y int, s string, attrs uint8) {
-	for _, r := range []rune(s) {
-		win.SetCell(x, y, r, attrs)
-		x++
-	}
 }
 
 const (
@@ -125,15 +118,7 @@ func (syd *Syd) Main() {
 		timestamp time.Time
 	)
 	for !syd.shouldQuit {
-		w, h := win.Size()
-		syd.activeView.SetSize(w, h-2) // 2 for the footer
-		syd.activeView.Render(win)
-		syd.printFoot()
-		if syd.mode == ModeInsert {
-			print(0, h-1, "-- INSERT --", term.AttrBold)
-		}
-		win.Flush()
-
+		syd.activeView.Render()
 		select {
 		case action := <-syd.vi.Actions:
 			action()
@@ -148,7 +133,7 @@ func (syd *Syd) Main() {
 			case ui.MouseBtnPress:
 				switch ev.Button {
 				case ui.MouseButton1:
-					p := syd.activeView.Frame.CharsToXY(ev.X, ev.Y)
+					p := syd.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
 					q := syd.activeView.Origin() + int64(p)
 					if time.Since(timestamp) < 300*time.Millisecond {
 						syd.activeView.Select(dblclick(syd.activeView, q))
@@ -169,7 +154,7 @@ func (syd *Syd) Main() {
 				if lastQ < 0 {
 					continue
 				}
-				p := syd.activeView.Frame.CharsToXY(ev.X, ev.Y)
+				p := syd.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
 				q0, q1 := lastQ, syd.activeView.Origin()+int64(p)
 				if q1 < q0 {
 					q0, q1 = q1, q0
@@ -178,19 +163,4 @@ func (syd *Syd) Main() {
 			}
 		}
 	}
-}
-
-func (syd *Syd) printFoot() {
-	w, h := win.Size()
-	for x := 0; x < w; x++ {
-		win.SetCell(x, h-2, ' ', term.AttrReverse|term.AttrBold)
-	}
-	filename := filename
-	if filename == "" {
-		filename = "[No Name]"
-	}
-	if syd.buffer.Dirty() {
-		filename += " [+]"
-	}
-	print(0, h-2, filename, term.AttrReverse|term.AttrBold)
 }

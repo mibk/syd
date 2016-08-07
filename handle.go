@@ -55,7 +55,7 @@ func left(v *view.View) {
 	} else {
 		vismove(v, -1)
 	}
-	v.Frame.WantCol = view.ColQ0
+	v.Frame().SetWantCol(ui.ColQ0)
 }
 
 func right(v *view.View) {
@@ -65,12 +65,13 @@ func right(v *view.View) {
 	} else {
 		vismove(v, +1)
 	}
-	v.Frame.WantCol = view.ColQ1
+	v.Frame().SetWantCol(ui.ColQ1)
 }
 
 func up(v *view.View) {
 	if qvis == -1 {
-		q := findQ(v, v.Frame.Line1-1)
+		_, line1 := v.Frame().SelectionLines()
+		q := findQ(v, line1-1)
 		v.Select(q, q)
 	} else {
 		qv, line := visQAndLine(v)
@@ -81,7 +82,8 @@ func up(v *view.View) {
 
 func down(v *view.View) {
 	if qvis == -1 {
-		q := findQ(v, v.Frame.Line1+1)
+		_, line1 := v.Frame().SelectionLines()
+		q := findQ(v, line1+1)
 		v.Select(q, q)
 	} else {
 		qv, line := visQAndLine(v)
@@ -95,38 +97,33 @@ func findQ(v *view.View, line int) int64 {
 		v.SetOrigin(v.PrevNewLine(v.Origin(), -line))
 		v.LoadText()
 		line = 0
-	} else if line > len(v.Frame.Lines)-1 {
+	} else if line > v.Frame().Lines()-1 {
 		_, h := v.Size()
-		if len(v.Frame.Lines) == h {
-			i := line - len(v.Frame.Lines) + 1
+		if v.Frame().Lines() == h {
+			i := line - v.Frame().Lines() + 1
 			oldOrg := v.Origin()
-			l := len(v.Frame.Lines)
-			v.SetOrigin(oldOrg + int64(v.Frame.NextNewLine(i)))
+			l := v.Frame().Lines()
+			v.SetOrigin(oldOrg + int64(v.Frame().CharsUntilXY(0, i)))
 			v.LoadText()
-			if len(v.Frame.Lines) < l {
+			if v.Frame().Lines() < l {
 				v.SetOrigin(oldOrg)
 				v.LoadText()
 			}
 		}
-		line = len(v.Frame.Lines) - 1
+		line = v.Frame().Lines() - 1
 	}
 	q := v.Origin()
-	for n, l := range v.Frame.Lines {
-		if n < line {
-			q += int64(len(l)) + 1 // + '\n'
-			continue
-		}
-		return q + int64(view.CharsToX(v.Frame.Lines[n], v.Frame.WantCol))
-	}
-	panic("shouldn't happen")
+	return q + int64(v.Frame().CharsUntilXY(v.Frame().WantCol(), line))
 }
 
 func visQAndLine(v *view.View) (q int64, line int) {
 	q0, q1 := v.Selected()
 	if qvis == 0 {
-		return q0, v.Frame.Line0
+		line0, _ := v.Frame().SelectionLines()
+		return q0, line0
 	}
-	return q1, v.Frame.Line1
+	_, line1 := v.Frame().SelectionLines()
+	return q1, line1
 }
 
 func vismove(v *view.View, d int64) {
@@ -166,7 +163,7 @@ func pageDown(v *view.View) {
 }
 
 func scrollDown(v *view.View, nlines int) {
-	v.SetOrigin(v.Origin() + int64(v.Frame.CharsToXY(0, nlines)))
+	v.SetOrigin(v.Origin() + int64(v.Frame().CharsUntilXY(0, nlines)))
 }
 
 func visualMode(v *view.View) {

@@ -4,113 +4,51 @@ import (
 	"io"
 
 	"github.com/mibk/syd/core"
-	"github.com/mibk/syd/ui/term"
+	"github.com/mibk/syd/ui"
 )
-
-const tabStop = 8
 
 type View struct {
 	width  int
 	height int
+	win    ui.Window
 	buf    *core.Buffer
 
 	origin int64
 	q0, q1 int64
-
-	Frame Frame
 }
 
-func New(buf *core.Buffer) *View {
-	return &View{buf: buf}
+func New(win ui.Window, buf *core.Buffer) *View {
+	return &View{win: win, buf: buf}
 }
 
 // Size returns the size of v.
-func (v *View) Size() (w, h int) {
-	return v.width, v.height
-}
+func (v *View) Size() (w, h int) { return v.win.Size() }
 
-// SetSize sets the size of v.
-func (v *View) SetSize(w, h int) {
-	v.width, v.height = w, h
-}
+func (v *View) Frame() ui.Frame { return v.win.Frame() }
 
-func (v *View) Render(ui term.UI) {
-	attr := uint8(term.AttrDefault)
-	selText := func(p int64, x, y int) {
-		if p == v.q0 {
-			if v.q0 == v.q1 {
-				ui.SetCursor(x, y)
-			} else {
-				attr = term.AttrReverse
-			}
-		} else if p == v.q1 {
-			attr = term.AttrDefault
-		}
-	}
+func (v *View) Render() {
 	v.LoadText()
-	ui.SetCursor(-1, -1)
-	ui.Clear()
-	p := v.origin
-	for y, l := range v.Frame.Lines {
-		x := 0
-		for _, r := range l {
-			selText(p, x, y)
-			ui.SetCell(x, y, r, attr)
-			p++
-			if r == '\t' {
-				x += TabWidthForCol(x)
-			} else {
-				x++
-			}
-		}
-		selText(p, x, y)
-		p++
-	}
+	v.win.Flush()
 }
 
 func (v *View) LoadText() {
-	v.Frame.Lines = nil
-	x, y := 0, 0
-	p := v.origin
-	for ; ; p++ {
-		if len(v.Frame.Lines) <= y {
-			v.Frame.Lines = append(v.Frame.Lines, nil)
-		}
-		if p == v.q0 {
-			v.Frame.Line0, v.Frame.Col0 = y, x
-			if v.Frame.WantCol == ColQ0 {
-				v.Frame.WantCol = x
-			}
-		}
-		if p == v.q1 {
-			v.Frame.Line1, v.Frame.Col1 = y, x
-			if v.Frame.WantCol == ColQ1 {
-				v.Frame.WantCol = x
-			}
-		}
+	v.win.Clear()
+	v.win.Select(int(v.q0-v.origin), int(v.q1-v.origin))
+
+	for p := v.origin; ; p++ {
 		r, _, err := v.buf.ReadRuneAt(p)
 		if err == io.EOF {
 			break
 		} else if err != nil {
 			panic(err)
 		}
-		if r != '\n' {
-			v.Frame.Lines[y] = append(v.Frame.Lines[y], r)
+		if err := v.win.WriteRune(r); err == io.EOF {
+			break
+		} else if err != nil {
+			panic(err)
 		}
 
-		if x >= v.width || r == '\n' {
-			y++
-			x = 0
-			if y == v.height {
-				break
-			}
-		} else if r == '\t' {
-			x += TabWidthForCol(x)
-		} else {
-			x++
-		}
 	}
-	v.Frame.Nchars = int(p - v.origin)
 }
 
 func (v *View) Origin() int64 { return v.origin }
@@ -124,11 +62,11 @@ func (v *View) Select(q0, q1 int64) {
 		return
 	}
 	v.q0, v.q1 = q0, q1
-	if v.q1 > v.origin+int64(v.Frame.Nchars) {
+	if v.q1 > v.origin+int64(v.Frame().Nchars()) {
 		oldOrg := v.origin
-		v.origin += int64(v.Frame.NextNewLine(3))
+		v.origin += int64(v.Frame().CharsUntilXY(0, 3))
 		v.LoadText()
-		if v.q1 > v.origin+int64(v.Frame.Nchars) {
+		if v.q1 > v.origin+int64(v.Frame().Nchars()) {
 			// There's no more content, get back.
 			v.origin = oldOrg
 			v.q1--
@@ -147,7 +85,7 @@ func (v *View) Insert(s string) {
 	}
 	v.buf.Insert(v.q0, s)
 	v.q0, v.q1 = v.q0+1, v.q0+1
-	v.Frame.WantCol = ColQ1
+	v.Frame().SetWantCol(ui.ColQ1)
 	v.checkVisibility()
 }
 
@@ -158,7 +96,7 @@ func (v *View) DelSelected() {
 }
 
 func (v *View) checkVisibility() {
-	if v.q0 < v.origin || v.q0 > v.origin+int64(v.Frame.Nchars)+1 {
+	if v.q0 < v.origin || v.q0 > v.origin+int64(v.Frame().Nchars())+1 {
 		v.origin = v.PrevNewLine(v.q0, 3)
 	}
 }
@@ -189,12 +127,4 @@ func (v *View) PrevNewLine(p int64, n int) int64 {
 func (v *View) ReadRuneAt(off int64) (rune, error) {
 	r, _, err := v.buf.ReadRuneAt(off)
 	return r, err
-}
-
-func TabWidthForCol(col int) int {
-	w := tabStop - col%tabStop
-	if w == 0 {
-		return tabStop
-	}
-	return w
 }
