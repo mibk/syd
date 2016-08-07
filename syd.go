@@ -137,10 +137,12 @@ func (syd *Syd) Main() {
 					q := syd.activeView.Origin() + int64(p)
 					if time.Since(timestamp) < 300*time.Millisecond {
 						syd.activeView.Select(dblclick(syd.activeView, q))
+						syd.activeView.Frame().SetWantCol(ui.ColQ0)
 						lastQ = -1
 						continue
 					}
 					syd.activeView.Select(q, q)
+					syd.activeView.Frame().SetWantCol(ui.ColQ0)
 					lastQ = q
 					timestamp = time.Now()
 				case ui.MouseWheelUp:
