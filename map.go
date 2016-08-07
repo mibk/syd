@@ -5,23 +5,23 @@ import (
 	"github.com/mibk/syd/view"
 )
 
-func mapCommands(syd *Syd) {
-	syd.AddStringCommand("q", doOnce(func(*view.View) { syd.shouldQuit = true }))
+func setMappings(syd *Syd) {
+	syd.AddStringOperator("q", doOnce(func(*view.View) { syd.shouldQuit = true }))
 
 	syd.AddStringMotion("j", doNTimes(down))
 	syd.AddStringMotion("k", doNTimes(up))
 	syd.AddStringMotion("h", doNTimes(left))
 	syd.AddStringMotion("l", doNTimes(right))
 
-	syd.AddCommand([]ui.KeyPress{{Key: 'f', Ctrl: true}}, doNTimes(pageDown))
-	syd.AddCommand([]ui.KeyPress{{Key: 'b', Ctrl: true}}, doNTimes(pageUp))
+	syd.AddOperator([]ui.KeyPress{{Key: 'f', Ctrl: true}}, doNTimes(pageDown))
+	syd.AddOperator([]ui.KeyPress{{Key: 'b', Ctrl: true}}, doNTimes(pageUp))
 
-	syd.AddStringCommand("d", doNTimes(func(v *view.View) { v.DelSelected() }))
+	syd.AddStringOperator("d", doNTimes(func(v *view.View) { v.DelSelected() }))
 
-	syd.AddStringCommand("u", doNTimes((*view.View).Undo))
-	syd.AddCommand([]ui.KeyPress{{Key: 'r', Ctrl: true}}, doNTimes((*view.View).Redo))
+	syd.AddStringOperator("u", doNTimes((*view.View).Undo))
+	syd.AddOperator([]ui.KeyPress{{Key: 'r', Ctrl: true}}, doNTimes((*view.View).Redo))
 
-	syd.AddStringCommand("i", doOnce(func(*view.View) { syd.mode = ModeInsert }))
+	syd.AddStringOperator("i", doOnce(func(*view.View) { syd.mode = ModeInsert }))
 }
 
 func doOnce(fn func(*view.View)) func(*view.View, int) {

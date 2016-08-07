@@ -45,7 +45,7 @@ func main() {
 		buffer:     buf,
 		activeView: view.New(win, core.NewBuffer(buf)),
 	}
-	mapCommands(syd)
+	setMappings(syd)
 	go syd.RouteEvents()
 	syd.Main()
 }
@@ -96,12 +96,12 @@ func parseKeys(cmd string) []ui.KeyPress {
 	return events
 }
 
-func (syd *Syd) AddCommand(cmd []ui.KeyPress, fn func(*view.View, int)) {
-	syd.vi.AddCommand(cmd, func(n int) { fn(syd.activeView, n) })
+func (syd *Syd) AddOperator(cmd []ui.KeyPress, fn func(*view.View, int)) {
+	syd.vi.AddOperator(cmd, func(n int) { fn(syd.activeView, n) }, false)
 }
 
-func (syd *Syd) AddStringCommand(cmd string, fn func(*view.View, int)) {
-	syd.AddCommand(parseKeys(cmd), fn)
+func (syd *Syd) AddStringOperator(cmd string, fn func(*view.View, int)) {
+	syd.AddOperator(parseKeys(cmd), fn)
 }
 
 func (syd *Syd) AddMotion(cmd []ui.KeyPress, fn func(*view.View, int)) {

@@ -6,24 +6,19 @@ import (
 	"github.com/mibk/syd/ui"
 )
 
-type Command struct {
-	action         func(num int)
+// operator node
+type opNode struct {
+	action         func(n int)
 	requiresMotion bool
+	children       map[ui.KeyPress]*opNode
 }
 
-type Motion func(num int)
-
-type commandNode struct {
-	Command
-	children map[ui.KeyPress]*commandNode
-}
-
-func newCommandNode() *commandNode {
-	return &commandNode{children: make(map[ui.KeyPress]*commandNode)}
+func newOpNode() *opNode {
+	return &opNode{children: make(map[ui.KeyPress]*opNode)}
 }
 
 type motionNode struct {
-	motion   Motion
+	motion   func(n int)
 	children map[ui.KeyPress]*motionNode
 }
 
@@ -32,8 +27,8 @@ func newMotionNode() *motionNode {
 }
 
 type Parser struct {
-	commandTree *commandNode
-	motionTree  *motionNode
+	opTree     *opNode
+	motionTree *motionNode
 
 	presses chan ui.KeyPress
 	peeked  *ui.KeyPress
@@ -42,43 +37,32 @@ type Parser struct {
 
 func NewParser() *Parser {
 	p := &Parser{
-		commandTree: newCommandNode(),
-		motionTree:  newMotionNode(),
-		presses:     make(chan ui.KeyPress),
+		opTree:     newOpNode(),
+		motionTree: newMotionNode(),
+		presses:    make(chan ui.KeyPress),
 
 		// Make it a buffered channel because of aliases.
 		Actions: make(chan func(), 2),
 	}
-	p.commandTree.requiresMotion = true
+	p.opTree.requiresMotion = true
 
 	go p.parse()
 	return p
 }
 
-var RequiresMotion = func(c Command) Command {
-	c.requiresMotion = true
-	return c
-}
-
-func (p *Parser) AddCommand(seq []ui.KeyPress, f func(num int),
-	opts ...func(Command) Command) {
-	cmd := Command{action: f}
-	for _, opt := range opts {
-		cmd = opt(cmd)
-	}
-
-	n := p.commandTree
+func (p *Parser) AddOperator(seq []ui.KeyPress, fn func(n int), requiresMotion bool) {
+	n := p.opTree
 	for _, k := range seq {
 		if _, ok := n.children[k]; !ok {
-			n.children[k] = newCommandNode()
+			n.children[k] = newOpNode()
 		}
 		n = n.children[k]
 	}
-	n.requiresMotion = cmd.requiresMotion
-	n.action = cmd.action
+	n.action = fn
+	n.requiresMotion = requiresMotion
 }
 
-func (p *Parser) AddMotion(seq []ui.KeyPress, motion Motion) {
+func (p *Parser) AddMotion(seq []ui.KeyPress, fn func(n int)) {
 	n := p.motionTree
 	for _, k := range seq {
 		if _, ok := n.children[k]; !ok {
@@ -86,7 +70,7 @@ func (p *Parser) AddMotion(seq []ui.KeyPress, motion Motion) {
 		}
 		n = n.children[k]
 	}
-	n.motion = motion
+	n.motion = fn
 }
 
 func (p *Parser) Decode(k ui.KeyPress) {
@@ -119,10 +103,10 @@ Loop:
 			cnum = p.parseNum()
 		}
 
-		cmd := p.commandTree
+		op := p.opTree
 		for {
 			k = p.peek()
-			n, ok := cmd.children[k]
+			n, ok := op.children[k]
 			if !ok {
 				break
 			}
@@ -131,12 +115,12 @@ Loop:
 				p.Actions <- func() { n.action(cnum) }
 				continue Loop
 			}
-			cmd = n
+			op = n
 		}
 
-		if cmd.requiresMotion {
+		if op.requiresMotion {
 			mnum := 0
-			if cmd == p.commandTree {
+			if op == p.opTree {
 				mnum = cnum
 			} else {
 				k = p.peek()
@@ -154,8 +138,8 @@ Loop:
 				if n.motion != nil {
 					p.Actions <- func() {
 						n.motion(mnum)
-						if cmd.action != nil {
-							cmd.action(cnum)
+						if op.action != nil {
+							op.action(cnum)
 						}
 					}
 					continue Loop
@@ -163,7 +147,7 @@ Loop:
 				motion = n
 			}
 		}
-		// TODO: unknown command sequence
+		// TODO: unknown sequence
 	}
 
 }
@@ -207,7 +191,7 @@ func (p *Parser) AddAlias(alias, seq []ui.KeyPress) {
 			p.Decode(k)
 		}
 	}
-	p.AddCommand(alias, a)
+	p.AddOperator(alias, a, false)
 }
 
 func numToKeyPresses(n int) []ui.KeyPress {
