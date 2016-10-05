@@ -21,7 +21,7 @@ type Window interface {
 	// space for characters to be displayed, io.EOF is return.
 	WriteRune(r rune) error
 
-	// Flushed flushes the frame buffer, making the changes to the frame
+	// Flush flushes the frame buffer, making the changes to the frame
 	// buffer visible.
 	Flush()
 
