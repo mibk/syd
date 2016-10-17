@@ -1,8 +1,7 @@
-// The majority of parts of this file is based on the text manipulation in
-// the vis editor by Marc André Tanner and are available under the copyright
-// bellow.  For further information please visit http://repo.or.cz/w/vis.git
-// or https://github.com/martanne/vis.
-
+// Based on the undo/redo functionality in the vis editor by Marc André Tanner,
+// lincensed under ISC license which can be found bellow. For further information
+// please visit http://repo.or.cz/w/vis.git or https://github.com/martanne/vis.
+//
 // Copyright (c) 2014 Marc André Tanner <mat at brain-dump.org>
 //
 // Permission to use, copy, modify, and/or distribute this software for any
