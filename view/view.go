@@ -2,6 +2,7 @@ package view
 
 import (
 	"io"
+	"unicode/utf8"
 
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/ui"
@@ -84,7 +85,8 @@ func (v *View) Insert(s string) {
 		v.buf.Delete(v.q0, v.q1)
 	}
 	v.buf.Insert(v.q0, s)
-	v.q0, v.q1 = v.q0+1, v.q0+1
+	q := v.q0 + int64(utf8.RuneCountInString(s))
+	v.q0, v.q1 = q, q
 	v.Frame().SetWantCol(ui.ColQ1)
 	v.checkVisibility()
 }

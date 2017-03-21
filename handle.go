@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"unicode"
 
 	"github.com/mibk/syd/ui"
@@ -9,7 +10,25 @@ import (
 
 func handleKeyPress(v *view.View, ev ui.KeyPress) {
 	switch {
-	case ev.Key == ui.KeyEscape:
+	case ev.Key == ui.KeyEnter:
+		q0, _ := v.Selected()
+		p := v.PrevNewLine(q0, 1)
+
+		var indent []rune
+		for ; ; p++ {
+			r, err := v.ReadRuneAt(p)
+			if err == io.EOF {
+				break
+			} else if err != nil {
+				panic(err)
+			}
+			if r != ' ' && r != '\t' {
+				break
+			}
+			indent = append(indent, r)
+
+		}
+		v.Insert("\n" + string(indent))
 	case ev.Key == ui.KeyBackspace:
 		q0, q1 := v.Selected()
 		if q0 == q1 {
