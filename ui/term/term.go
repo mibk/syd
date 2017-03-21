@@ -91,6 +91,7 @@ func (t *UI) checkSelection() {
 }
 
 func (t *UI) Flush() {
+	width, _ := t.Size()
 	st := tcell.StyleDefault
 	selText := func(p, x, y int) {
 		if p == t.p0 {
@@ -109,15 +110,22 @@ func (t *UI) Flush() {
 		x := 0
 		for _, r := range l {
 			selText(p, x, y)
-			t.screen.SetContent(x, y, r, nil, st)
-			p++
+			w := 1
 			if r == '\t' {
-				x += tabWidthForCol(x)
-			} else {
-				x++
+				r = ' '
+				w = tabWidthForCol(x)
+
 			}
+			for i := 0; i < w; i++ {
+				t.screen.SetContent(x, y, r, nil, st)
+				x += 1
+			}
+			p++
 		}
 		selText(p, x, y)
+		for ; x < width; x++ {
+			t.screen.SetContent(x, y, ' ', nil, st)
+		}
 		p++
 	}
 	t.screen.Show()
