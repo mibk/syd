@@ -15,6 +15,10 @@ type UI struct {
 	x, y   int // current position
 
 	wasBtnPressed bool
+
+	// styles
+	bgstyle tcell.Style
+	hlstyle tcell.Style
 }
 
 func (t *UI) Init() error {
@@ -28,6 +32,12 @@ func (t *UI) Init() error {
 	sc.EnableMouse()
 	t.screen = sc
 	t.frame = new(Frame)
+
+	t.bgstyle = tcell.StyleDefault.
+		Background(tcell.GetColor("#ffffea"))
+	t.hlstyle = tcell.StyleDefault.
+		Background(tcell.GetColor("#dfdf9f"))
+
 	go t.translateEvents()
 	return nil
 }
@@ -92,16 +102,17 @@ func (t *UI) checkSelection() {
 
 func (t *UI) Flush() {
 	width, _ := t.Size()
-	st := tcell.StyleDefault
+	t.screen.Fill(' ', t.bgstyle)
+	style := t.bgstyle
 	selText := func(p, x, y int) {
 		if p == t.p0 {
 			if t.p0 == t.p1 {
 				t.screen.ShowCursor(x, y)
 			} else {
-				st = st.Reverse(true)
+				style = t.hlstyle
 			}
 		} else if p == t.p1 {
-			st = st.Reverse(false)
+			style = t.bgstyle
 		}
 	}
 	t.screen.HideCursor()
@@ -117,14 +128,14 @@ func (t *UI) Flush() {
 
 			}
 			for i := 0; i < w; i++ {
-				t.screen.SetContent(x, y, r, nil, st)
+				t.screen.SetContent(x, y, r, nil, style)
 				x += 1
 			}
 			p++
 		}
 		selText(p, x, y)
 		for ; x < width; x++ {
-			t.screen.SetContent(x, y, ' ', nil, st)
+			t.screen.SetContent(x, y, ' ', nil, style)
 		}
 		p++
 	}
