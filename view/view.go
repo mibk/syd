@@ -8,6 +8,8 @@ import (
 	"github.com/mibk/syd/ui"
 )
 
+const EOF = utf8.MaxRune + 1
+
 type View struct {
 	width  int
 	height int
@@ -126,7 +128,12 @@ func (v *View) PrevNewLine(p int64, n int) int64 {
 	return p
 }
 
-func (v *View) ReadRuneAt(off int64) (rune, error) {
+func (v *View) ReadRuneAt(off int64) rune {
 	r, _, err := v.buf.ReadRuneAt(off)
-	return r, err
+	if err == io.EOF {
+		return EOF
+	} else if err != nil {
+		panic(err)
+	}
+	return r
 }

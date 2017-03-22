@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io"
 	"unicode"
 
 	"github.com/mibk/syd/ui"
@@ -16,17 +15,11 @@ func handleKeyPress(v *view.View, ev ui.KeyPress) {
 
 		var indent []rune
 		for ; ; p++ {
-			r, err := v.ReadRuneAt(p)
-			if err == io.EOF {
-				break
-			} else if err != nil {
-				panic(err)
-			}
+			r := v.ReadRuneAt(p)
 			if r != ' ' && r != '\t' {
 				break
 			}
 			indent = append(indent, r)
-
 		}
 		v.Insert("\n" + string(indent))
 	case ev.Key == ui.KeyBackspace:
@@ -125,15 +118,15 @@ func scrollDown(v *view.View, nlines int) {
 func dblclick(v *view.View, q int64) (q0, q1 int64) {
 	q0, q1 = q, q
 	for q0 > 0 {
-		r, err := v.ReadRuneAt(q0 - 1)
-		if err != nil || !isAlphaNumeric(r) {
+		r := v.ReadRuneAt(q0 - 1)
+		if !isAlphaNumeric(r) {
 			break
 		}
 		q0--
 	}
 	for {
-		r, err := v.ReadRuneAt(q1)
-		if err != nil || !isAlphaNumeric(r) {
+		r := v.ReadRuneAt(q1)
+		if !isAlphaNumeric(r) {
 			break
 		}
 		q1++
