@@ -93,7 +93,7 @@ func (v *View) Insert(s string) {
 	v.checkVisibility()
 }
 
-func (v *View) DelSelected() {
+func (v *View) DeleteSel() {
 	v.buf.Delete(v.q0, v.q1)
 	v.q1 = v.q0
 	v.checkVisibility()

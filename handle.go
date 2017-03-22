@@ -27,13 +27,13 @@ func handleKeyPress(v *view.View, ev ui.KeyPress) {
 		if q0 == q1 {
 			v.Select(q0-1, q1)
 		}
-		v.DelSelected()
+		v.DeleteSel()
 	case ev.Key == ui.KeyDelete:
 		q0, q1 := v.Selected()
 		if q0 == q1 {
 			v.Select(q0, q1+1)
 		}
-		v.DelSelected()
+		v.DeleteSel()
 	case ev.Key == ui.KeyLeft:
 		left(v)
 	case ev.Key == ui.KeyRight:

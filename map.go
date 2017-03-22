@@ -16,7 +16,7 @@ func setMappings(syd *Syd) {
 	syd.AddOperator([]ui.KeyPress{{Key: 'f', Ctrl: true}}, doNTimes(pageDown))
 	syd.AddOperator([]ui.KeyPress{{Key: 'b', Ctrl: true}}, doNTimes(pageUp))
 
-	syd.AddStringOperator("d", doNTimes(func(v *view.View) { v.DelSelected() }))
+	syd.AddStringOperator("d", doNTimes(func(v *view.View) { v.DeleteSel() }))
 
 	syd.AddStringOperator("u", doNTimes((*view.View).Undo))
 	syd.AddOperator([]ui.KeyPress{{Key: 'r', Ctrl: true}}, doNTimes((*view.View).Redo))
