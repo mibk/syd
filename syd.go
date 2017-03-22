@@ -7,7 +7,7 @@ import (
 
 	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/core"
-	"github.com/mibk/syd/libs/undo"
+	"github.com/mibk/syd/pkg/undo"
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 	"github.com/mibk/syd/vi"

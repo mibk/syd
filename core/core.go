@@ -4,7 +4,7 @@ import (
 	"io"
 	"unicode/utf8"
 
-	"github.com/mibk/syd/libs/undo"
+	"github.com/mibk/syd/pkg/undo"
 )
 
 type Buffer struct {
