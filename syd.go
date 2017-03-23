@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"time"
+	"unicode/utf8"
 
 	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/core"
@@ -145,6 +146,16 @@ func (syd *Syd) Main() {
 					syd.activeView.Frame().SetWantCol(ui.ColQ0)
 					lastQ = q
 					timestamp = time.Now()
+				case ui.MouseButton2:
+					// This is just ugly proof of concept.
+					p := syd.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
+					q := syd.activeView.Origin() + int64(p)
+					q0, q1 := dblclick(syd.activeView, q)
+					var cmd []rune
+					for i := q0; i < q1; i++ {
+						cmd = append(cmd, syd.activeView.ReadRuneAt(i))
+					}
+					syd.Execute(string(cmd))
 				case ui.MouseWheelUp:
 					scrollUp(syd.activeView, 3)
 				case ui.MouseWheelDown:
@@ -165,4 +176,43 @@ func (syd *Syd) Main() {
 			}
 		}
 	}
+}
+
+func (syd *Syd) Execute(cmd string) {
+	switch cmd {
+	case "Put":
+		if filename != "" {
+			if err := saveFile(filename, syd.activeView); err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
+func saveFile(filename string, v *view.View) error {
+	// TODO: Read bytes directly from the undo.Buffer.
+	f, err := os.Create(filename + "~")
+	if err != nil {
+		return err
+	}
+
+	var buf [64]byte
+	var i int
+
+	for p := int64(0); ; p++ {
+		r := v.ReadRuneAt(p)
+		if r == view.EOF || len(buf[i:]) < utf8.UTFMax {
+			if _, err := f.Write(buf[:i]); err != nil {
+				return err
+			}
+			i = 0
+		}
+		if r == view.EOF {
+			break
+		}
+		i += utf8.EncodeRune(buf[i:], r)
+	}
+	f.Close()
+
+	return os.Rename(filename+"~", filename)
 }
