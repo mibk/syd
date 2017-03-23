@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"log"
 	"os"
+	"os/exec"
+	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -178,14 +181,34 @@ func (syd *Syd) Main() {
 	}
 }
 
-func (syd *Syd) Execute(cmd string) {
-	switch cmd {
+func (syd *Syd) Execute(command string) {
+	switch command {
 	case "Put":
 		if filename != "" {
 			if err := saveFile(filename, syd.activeView); err != nil {
 				panic(err)
 			}
 		}
+	default:
+		v := syd.activeView
+		var selected []rune
+		q0, q1 := v.Selected()
+		for p := q0; p < q1; p++ {
+			r := v.ReadRuneAt(p)
+			selected = append(selected, r)
+		}
+		var buf bytes.Buffer
+		rd := strings.NewReader(string(selected))
+		cmd := exec.Command(command)
+		cmd.Stdin = rd
+		cmd.Stdout = &buf
+		// TODO: Redirect stderr somewhere.
+		if err := cmd.Run(); err != nil {
+			panic(err)
+		}
+		s := buf.String()
+		v.Insert(s)
+		v.Select(q0, q0+int64(utf8.RuneCountInString(s)))
 	}
 }
 
