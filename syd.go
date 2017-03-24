@@ -189,6 +189,10 @@ func (e *Editor) Execute(command string) {
 				panic(err)
 			}
 		}
+	case "Undo":
+		e.activeView.Undo()
+	case "Redo":
+		e.activeView.Redo()
 	default:
 		v := e.activeView
 		var selected []rune
