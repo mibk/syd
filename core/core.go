@@ -12,13 +12,12 @@ type Buffer struct {
 	offset int64 // offset in bytes
 	pos    int64 // position in runes
 
-	rb []byte // rune buffer
+	rb [4]byte // rune buffer
 }
 
 func NewBuffer(buf *undo.Buffer) *Buffer {
 	return &Buffer{
 		buf: buf,
-		rb:  make([]byte, 4),
 	}
 }
 
@@ -59,11 +58,11 @@ func (b *Buffer) setPos(pos int64) (offset int64) {
 }
 
 func (b *Buffer) readRuneAtByteOffset(off int64) (rune, int, error) {
-	n, err := b.buf.ReadAt(b.rb, off)
+	n, err := b.buf.ReadAt(b.rb[:], off)
 	if n == 0 && err != nil {
 		return 0, 0, err
 	}
-	r, s := utf8.DecodeRune(b.rb)
+	r, s := utf8.DecodeRune(b.rb[:n])
 	return r, s, nil
 }
 
