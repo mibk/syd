@@ -43,15 +43,15 @@ func main() {
 	}
 	buf := undo.NewBuffer(b)
 
-	syd := &Syd{
+	e := &Editor{
 		events:     make(chan ui.Event),
 		vi:         vi.NewParser(),
 		buffer:     buf,
 		activeView: view.New(win, core.NewBuffer(buf)),
 	}
-	setMappings(syd)
-	go syd.RouteEvents()
-	syd.Main()
+	setMappings(e)
+	go e.RouteEvents()
+	e.Main()
 }
 
 func readFile(filename string) (mmap.MMap, error) {
@@ -72,7 +72,7 @@ const (
 	ModeInsert
 )
 
-type Syd struct {
+type Editor struct {
 	events     chan ui.Event
 	vi         *vi.Parser
 	shouldQuit bool
@@ -82,13 +82,13 @@ type Syd struct {
 	mode       int
 }
 
-func (syd *Syd) RouteEvents() {
+func (e *Editor) RouteEvents() {
 	for ev := range ui.Events {
-		if keyPress, ok := ev.(ui.KeyPress); ok && syd.mode == ModeNormal {
-			syd.vi.Decode(keyPress)
+		if keyPress, ok := ev.(ui.KeyPress); ok && e.mode == ModeNormal {
+			e.vi.Decode(keyPress)
 			continue
 		}
-		syd.events <- ev
+		e.events <- ev
 	}
 }
 
@@ -100,69 +100,69 @@ func parseKeys(cmd string) []ui.KeyPress {
 	return events
 }
 
-func (syd *Syd) AddOperator(cmd []ui.KeyPress, fn func(*view.View, int)) {
-	syd.vi.AddOperator(cmd, func(n int) { fn(syd.activeView, n) }, false)
+func (e *Editor) AddOperator(cmd []ui.KeyPress, fn func(*view.View, int)) {
+	e.vi.AddOperator(cmd, func(n int) { fn(e.activeView, n) }, false)
 }
 
-func (syd *Syd) AddStringOperator(cmd string, fn func(*view.View, int)) {
-	syd.AddOperator(parseKeys(cmd), fn)
+func (e *Editor) AddStringOperator(cmd string, fn func(*view.View, int)) {
+	e.AddOperator(parseKeys(cmd), fn)
 }
 
-func (syd *Syd) AddMotion(cmd []ui.KeyPress, fn func(*view.View, int)) {
-	syd.vi.AddMotion(cmd, func(n int) { fn(syd.activeView, n) })
+func (e *Editor) AddMotion(cmd []ui.KeyPress, fn func(*view.View, int)) {
+	e.vi.AddMotion(cmd, func(n int) { fn(e.activeView, n) })
 }
 
-func (syd *Syd) AddStringMotion(cmd string, fn func(*view.View, int)) {
-	syd.AddMotion(parseKeys(cmd), fn)
+func (e *Editor) AddStringMotion(cmd string, fn func(*view.View, int)) {
+	e.AddMotion(parseKeys(cmd), fn)
 }
 
-func (syd *Syd) Main() {
+func (e *Editor) Main() {
 	var (
 		lastQ     int64 = -1
 		timestamp time.Time
 	)
-	for !syd.shouldQuit {
-		syd.activeView.Render()
+	for !e.shouldQuit {
+		e.activeView.Render()
 		select {
-		case action := <-syd.vi.Actions:
+		case action := <-e.vi.Actions:
 			action()
-		case ev := <-syd.events:
+		case ev := <-e.events:
 			switch ev := ev.(type) {
 			case ui.KeyPress:
 				if ev.Key == ui.KeyEscape {
-					syd.mode = ModeNormal
+					e.mode = ModeNormal
 					continue
 				}
-				handleKeyPress(syd.activeView, ev)
+				handleKeyPress(e.activeView, ev)
 			case ui.MouseBtnPress:
 				switch ev.Button {
 				case ui.MouseButton1:
-					p := syd.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
-					q := syd.activeView.Origin() + int64(p)
+					p := e.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
+					q := e.activeView.Origin() + int64(p)
 					if time.Since(timestamp) < 300*time.Millisecond {
-						syd.activeView.Select(dblclick(syd.activeView, q))
-						syd.activeView.Frame().SetWantCol(ui.ColQ0)
+						e.activeView.Select(dblclick(e.activeView, q))
+						e.activeView.Frame().SetWantCol(ui.ColQ0)
 						lastQ = -1
 						continue
 					}
-					syd.activeView.Select(q, q)
-					syd.activeView.Frame().SetWantCol(ui.ColQ0)
+					e.activeView.Select(q, q)
+					e.activeView.Frame().SetWantCol(ui.ColQ0)
 					lastQ = q
 					timestamp = time.Now()
 				case ui.MouseButton2:
 					// This is just ugly proof of concept.
-					p := syd.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
-					q := syd.activeView.Origin() + int64(p)
-					q0, q1 := dblclick(syd.activeView, q)
+					p := e.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
+					q := e.activeView.Origin() + int64(p)
+					q0, q1 := dblclick(e.activeView, q)
 					var cmd []rune
 					for i := q0; i < q1; i++ {
-						cmd = append(cmd, syd.activeView.ReadRuneAt(i))
+						cmd = append(cmd, e.activeView.ReadRuneAt(i))
 					}
-					syd.Execute(string(cmd))
+					e.Execute(string(cmd))
 				case ui.MouseWheelUp:
-					scrollUp(syd.activeView, 3)
+					scrollUp(e.activeView, 3)
 				case ui.MouseWheelDown:
-					scrollDown(syd.activeView, 3)
+					scrollDown(e.activeView, 3)
 				}
 			case ui.MouseBtnRelease:
 				lastQ = -1
@@ -170,27 +170,27 @@ func (syd *Syd) Main() {
 				if lastQ < 0 {
 					continue
 				}
-				p := syd.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
-				q0, q1 := lastQ, syd.activeView.Origin()+int64(p)
+				p := e.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
+				q0, q1 := lastQ, e.activeView.Origin()+int64(p)
 				if q1 < q0 {
 					q0, q1 = q1, q0
 				}
-				syd.activeView.Select(q0, q1)
+				e.activeView.Select(q0, q1)
 			}
 		}
 	}
 }
 
-func (syd *Syd) Execute(command string) {
+func (e *Editor) Execute(command string) {
 	switch command {
 	case "Put":
 		if filename != "" {
-			if err := saveFile(filename, syd.activeView); err != nil {
+			if err := saveFile(filename, e.activeView); err != nil {
 				panic(err)
 			}
 		}
 	default:
-		v := syd.activeView
+		v := e.activeView
 		var selected []rune
 		q0, q1 := v.Selected()
 		for p := q0; p < q1; p++ {
