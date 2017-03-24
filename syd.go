@@ -46,7 +46,6 @@ func main() {
 	e := &Editor{
 		events:     make(chan ui.Event),
 		vi:         vi.NewParser(),
-		buffer:     buf,
 		activeView: view.New(win, core.NewBuffer(buf)),
 	}
 	setMappings(e)
@@ -77,7 +76,6 @@ type Editor struct {
 	vi         *vi.Parser
 	shouldQuit bool
 
-	buffer     *undo.Buffer // TODO: remove
 	activeView *view.View
 	mode       int
 }
