@@ -181,6 +181,8 @@ func (e *Editor) Main() {
 
 func (e *Editor) Execute(command string) {
 	switch command {
+	case "Exit":
+		e.shouldQuit = true
 	case "Put":
 		if filename != "" {
 			if err := saveFile(filename, e.activeView); err != nil {
