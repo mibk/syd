@@ -13,10 +13,8 @@ const EOF = utf8.MaxRune + 1
 type View struct {
 	name string
 
-	width  int
-	height int
-	win    ui.Window
-	buf    *core.Buffer
+	win ui.Window
+	buf *core.Buffer
 
 	origin int64
 	q0, q1 int64
