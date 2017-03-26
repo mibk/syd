@@ -5,23 +5,23 @@ import (
 	"github.com/mibk/syd/view"
 )
 
-func setMappings(e *Editor) {
-	e.AddStringOperator("q", doOnce(func(*view.View) { e.shouldQuit = true }))
+func setMappings(ed *Editor) {
+	ed.AddStringOperator("q", doOnce(func(*view.View) { ed.shouldQuit = true }))
 
-	e.AddStringMotion("j", doNTimes(down))
-	e.AddStringMotion("k", doNTimes(up))
-	e.AddStringMotion("h", doNTimes(left))
-	e.AddStringMotion("l", doNTimes(right))
+	ed.AddStringMotion("j", doNTimes(down))
+	ed.AddStringMotion("k", doNTimes(up))
+	ed.AddStringMotion("h", doNTimes(left))
+	ed.AddStringMotion("l", doNTimes(right))
 
-	e.AddOperator([]ui.KeyPress{{Key: 'f', Ctrl: true}}, doNTimes(pageDown))
-	e.AddOperator([]ui.KeyPress{{Key: 'b', Ctrl: true}}, doNTimes(pageUp))
+	ed.AddOperator([]ui.KeyPress{{Key: 'f', Ctrl: true}}, doNTimes(pageDown))
+	ed.AddOperator([]ui.KeyPress{{Key: 'b', Ctrl: true}}, doNTimes(pageUp))
 
-	e.AddStringOperator("d", doNTimes(func(v *view.View) { v.DeleteSel() }))
+	ed.AddStringOperator("d", doNTimes(func(v *view.View) { v.DeleteSel() }))
 
-	e.AddStringOperator("u", doNTimes((*view.View).Undo))
-	e.AddOperator([]ui.KeyPress{{Key: 'r', Ctrl: true}}, doNTimes((*view.View).Redo))
+	ed.AddStringOperator("u", doNTimes((*view.View).Undo))
+	ed.AddOperator([]ui.KeyPress{{Key: 'r', Ctrl: true}}, doNTimes((*view.View).Redo))
 
-	e.AddStringOperator("i", doOnce(func(*view.View) { e.mode = ModeInsert }))
+	ed.AddStringOperator("i", doOnce(func(*view.View) { ed.mode = ModeInsert }))
 }
 
 func doOnce(fn func(*view.View)) func(*view.View, int) {
