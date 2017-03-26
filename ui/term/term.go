@@ -8,17 +8,8 @@ import (
 )
 
 type UI struct {
-	screen tcell.Screen
-	frame  *Frame
-
-	p0, p1 int // cursor position
-	x, y   int // current position
-
+	screen        tcell.Screen
 	wasBtnPressed bool
-
-	// styles
-	bgstyle tcell.Style
-	hlstyle tcell.Style
 }
 
 func (t *UI) Init() error {
@@ -31,12 +22,6 @@ func (t *UI) Init() error {
 	}
 	sc.EnableMouse()
 	t.screen = sc
-	t.frame = new(Frame)
-
-	t.bgstyle = tcell.StyleDefault.
-		Background(tcell.GetColor("#ffffea"))
-	t.hlstyle = tcell.StyleDefault.
-		Background(tcell.GetColor("#dfdf9f"))
 
 	go t.translateEvents()
 	return nil
@@ -49,75 +34,115 @@ func (t *UI) Close() error {
 
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
-func (t *UI) Clear() {
-	t.screen.Clear()
-	*t.frame = Frame{
-		lines:   make([][]rune, 1),
-		wantCol: t.frame.wantCol,
+func (t *UI) NewWindow() *Window {
+	return &Window{
+		x: 1, y: 1, // For testing purposes.
+		ui:    t,
+		frame: new(Frame),
+		bgstyle: tcell.StyleDefault.
+			Background(tcell.GetColor("#ffffea")),
+		hlstyle: tcell.StyleDefault.
+			Background(tcell.GetColor("#dfdf9f")),
 	}
-	t.x, t.y = 0, 0
-	t.checkSelection()
 }
 
-func (t *UI) Select(p0, p1 int) { t.p0, t.p1 = p0, p1 }
+type Window struct {
+	ui    *UI
+	frame *Frame
 
-func (t *UI) WriteRune(r rune) error {
-	if r != '\n' {
-		t.frame.lines[t.y] = append(t.frame.lines[t.y], r)
+	width, height int
+	x, y          int
+
+	cur struct {
+		p0, p1 int // char position
+		x, y   int // current position
 	}
 
-	w, h := t.Size()
-	if t.x >= w || r == '\n' {
-		t.y++
-		t.x = 0
-		t.frame.lines = append(t.frame.lines, nil)
-		if t.y == h {
+	// styles
+	bgstyle tcell.Style
+	hlstyle tcell.Style
+}
+
+func (win *Window) Size() (w, h int) {
+	// TODO: Return the width and height of the window.
+	w, h = win.ui.Size()
+	return w / 2, h
+}
+
+func (win *Window) Position() (x, y int) {
+	return win.x, win.y
+}
+
+func (win *Window) Clear() {
+	// TODO: Clean only the window portion.
+	win.ui.screen.Clear()
+	*win.frame = Frame{
+		lines:   make([][]rune, 1),
+		wantCol: win.frame.wantCol,
+	}
+	win.cur.x, win.cur.y = 0, 0
+	win.checkSelection()
+}
+
+func (win *Window) Select(p0, p1 int) { win.cur.p0, win.cur.p1 = p0, p1 }
+
+func (win *Window) WriteRune(r rune) error {
+	if r != '\n' {
+		win.frame.lines[win.cur.y] = append(win.frame.lines[win.cur.y], r)
+	}
+
+	w, h := win.Size()
+	if win.cur.x >= w || r == '\n' {
+		win.cur.y++
+		win.cur.x = 0
+		win.frame.lines = append(win.frame.lines, nil)
+		if win.cur.y == h {
 			return io.EOF
 		}
 	} else if r == '\t' {
-		t.x += tabWidthForCol(t.x)
+		win.cur.x += tabWidthForCol(win.cur.x)
 	} else {
-		t.x++
+		win.cur.x++
 	}
-	t.frame.nchars++
-	t.checkSelection()
+	win.frame.nchars++
+	win.checkSelection()
 	return nil
 }
 
 // checkSelection tries to line0, line1, and wantCol.
-func (t *UI) checkSelection() {
-	if t.p0 == t.frame.nchars {
-		t.frame.line0 = t.y
-		if t.frame.wantCol == ui.ColQ0 {
-			t.frame.wantCol = t.x
+func (win *Window) checkSelection() {
+	if win.cur.p0 == win.frame.nchars {
+		win.frame.line0 = win.cur.y
+		if win.frame.wantCol == ui.ColQ0 {
+			win.frame.wantCol = win.cur.x
 		}
 	}
-	if t.p1 == t.frame.nchars {
-		t.frame.line1 = t.y
-		if t.frame.wantCol == ui.ColQ1 {
-			t.frame.wantCol = t.x
+	if win.cur.p1 == win.frame.nchars {
+		win.frame.line1 = win.cur.y
+		if win.frame.wantCol == ui.ColQ1 {
+			win.frame.wantCol = win.cur.x
 		}
 	}
 }
 
-func (t *UI) Flush() {
-	width, _ := t.Size()
-	t.screen.Fill(' ', t.bgstyle)
-	style := t.bgstyle
+func (win *Window) Flush() {
+	width, _ := win.Size()
+	win.ui.screen.Fill(' ', win.bgstyle)
+	style := win.bgstyle
 	selText := func(p, x, y int) {
-		if p == t.p0 {
-			if t.p0 == t.p1 {
-				t.screen.ShowCursor(x, y)
+		if p == win.cur.p0 {
+			if win.cur.p0 == win.cur.p1 {
+				win.ui.screen.ShowCursor(win.x+x, win.y+y)
 			} else {
-				style = t.hlstyle
+				style = win.hlstyle
 			}
-		} else if p == t.p1 {
-			style = t.bgstyle
+		} else if p == win.cur.p1 {
+			style = win.bgstyle
 		}
 	}
-	t.screen.HideCursor()
+	win.ui.screen.HideCursor()
 	p := 0
-	for y, l := range t.frame.lines {
+	for y, l := range win.frame.lines {
 		x := 0
 		for _, r := range l {
 			selText(p, x, y)
@@ -128,21 +153,21 @@ func (t *UI) Flush() {
 
 			}
 			for i := 0; i < w; i++ {
-				t.screen.SetContent(x, y, r, nil, style)
+				win.ui.screen.SetContent(win.x+x, win.y+y, r, nil, style)
 				x += 1
 			}
 			p++
 		}
 		selText(p, x, y)
 		for ; x < width; x++ {
-			t.screen.SetContent(x, y, ' ', nil, style)
+			win.ui.screen.SetContent(win.x+x, win.y+y, ' ', nil, style)
 		}
 		p++
 	}
-	t.screen.Show()
+	win.ui.screen.Show()
 }
 
-func (t *UI) Frame() ui.Frame { return t.frame }
+func (win *Window) Frame() ui.Frame { return win.frame }
 
 type Frame struct {
 	lines   [][]rune
@@ -166,7 +191,7 @@ func (f *Frame) CharsUntilXY(x, y int) int {
 		}
 		p += len(l) + 1 // + '\n'
 	}
-	panic("shouldn't happen")
+	return 0
 }
 
 func charsUntilX(s []rune, x int) int {

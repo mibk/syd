@@ -19,17 +19,17 @@ import (
 )
 
 var (
-	win      = &term.UI{}
+	UI       = &term.UI{}
 	filename = ""
 )
 
 func main() {
 	log.SetPrefix("syd: ")
 	log.SetFlags(0)
-	if err := win.Init(); err != nil {
+	if err := UI.Init(); err != nil {
 		log.Fatalln("initializing ui:", err)
 	}
-	defer win.Close()
+	defer UI.Close()
 
 	var b []byte
 	if len(os.Args) > 1 {
@@ -43,6 +43,7 @@ func main() {
 	}
 	buf := undo.NewBuffer(b)
 
+	win := UI.NewWindow()
 	e := &Editor{
 		events:     make(chan ui.Event),
 		vi:         vi.NewParser(),
@@ -135,7 +136,8 @@ func (e *Editor) Main() {
 			case ui.MouseBtnPress:
 				switch ev.Button {
 				case ui.MouseButton1:
-					p := e.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
+					x, y := e.activeView.Position()
+					p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y)
 					q := e.activeView.Origin() + int64(p)
 					if time.Since(timestamp) < 300*time.Millisecond {
 						e.activeView.Select(dblclick(e.activeView, q))
@@ -149,7 +151,8 @@ func (e *Editor) Main() {
 					timestamp = time.Now()
 				case ui.MouseButton2:
 					// This is just ugly proof of concept.
-					p := e.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
+					x, y := e.activeView.Position()
+					p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y)
 					q := e.activeView.Origin() + int64(p)
 					q0, q1 := dblclick(e.activeView, q)
 					var cmd []rune
@@ -168,7 +171,8 @@ func (e *Editor) Main() {
 				if lastQ < 0 {
 					continue
 				}
-				p := e.activeView.Frame().CharsUntilXY(ev.X, ev.Y)
+				x, y := e.activeView.Position()
+				p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y)
 				q0, q1 := lastQ, e.activeView.Origin()+int64(p)
 				if q1 < q0 {
 					q0, q1 = q1, q0

@@ -27,6 +27,8 @@ func New(win ui.Window, buf *core.Buffer) *View {
 // Size returns the size of v.
 func (v *View) Size() (w, h int) { return v.win.Size() }
 
+func (v *View) Position() (x, y int) { return v.win.Position() }
+
 func (v *View) Frame() ui.Frame { return v.win.Frame() }
 
 func (v *View) Render() {

@@ -1,14 +1,25 @@
 package ui
 
-type Window interface {
+type Interface interface {
 	// Init initialises the UI.
 	Init() error
 
 	// Close safely destroys the UI resources.
 	Close() error
 
+	// Size returns size of the whole user interface.
+	Size() (w, h int)
+
+	// NewWindow creates a new window.
+	NewWindow() Window
+}
+
+type Window interface {
 	// Size returns size of the window.
 	Size() (w, h int)
+
+	// Positions returns the position of the window.
+	Position() (x, y int)
 
 	// Clear clears the frame buffer and enables the use of WriteRune.
 	Clear()
