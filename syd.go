@@ -50,6 +50,7 @@ func main() {
 		activeView: view.New(win, core.NewBuffer(buf)),
 	}
 	setMappings(e)
+	e.activeView.SetName(filename)
 	go e.RouteEvents()
 	e.Main()
 }
@@ -137,7 +138,7 @@ func (e *Editor) Main() {
 				switch ev.Button {
 				case ui.MouseButton1:
 					x, y := e.activeView.Position()
-					p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y)
+					p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y-ui.HeadHeight)
 					q := e.activeView.Origin() + int64(p)
 					if time.Since(timestamp) < 300*time.Millisecond {
 						e.activeView.Select(dblclick(e.activeView, q))
@@ -152,7 +153,7 @@ func (e *Editor) Main() {
 				case ui.MouseButton2:
 					// This is just ugly proof of concept.
 					x, y := e.activeView.Position()
-					p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y)
+					p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y-ui.HeadHeight)
 					q := e.activeView.Origin() + int64(p)
 					q0, q1 := dblclick(e.activeView, q)
 					var cmd []rune
@@ -172,7 +173,7 @@ func (e *Editor) Main() {
 					continue
 				}
 				x, y := e.activeView.Position()
-				p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y)
+				p := e.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y-ui.HeadHeight)
 				q0, q1 := lastQ, e.activeView.Origin()+int64(p)
 				if q1 < q0 {
 					q0, q1 = q1, q0

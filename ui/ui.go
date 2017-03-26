@@ -1,5 +1,8 @@
 package ui
 
+// TODO: This is for temporary reasons only. Remove!
+const HeadHeight = 2
+
 type Interface interface {
 	// Init initialises the UI.
 	Init() error
@@ -21,9 +24,22 @@ type Window interface {
 	// Positions returns the position of the window.
 	Position() (x, y int)
 
-	// Clear clears the frame buffer and enables the use of WriteRune.
+	// Head is the portion of the window that includes tags.
+	Head() Text
+
+	// Body is the portion of the window that includes an actual
+	// content of the file.
+	Body() Text
+
+	// Clear clears the frame buffers and enables the use of WriteRune.
 	Clear()
 
+	// Flush flushes the frame buffers, making the changes to the them
+	// visible.
+	Flush()
+}
+
+type Text interface {
 	// Select sets which characters should be selected. If p0 == p1, cursor
 	// is placed instead. Select must be called before calls to WriteRune.
 	Select(p0, p1 int)
@@ -31,10 +47,6 @@ type Window interface {
 	// WriteRune writes rune to the frame buffer. When there is no more
 	// space for characters to be displayed, io.EOF is return.
 	WriteRune(r rune) error
-
-	// Flush flushes the frame buffer, making the changes to the frame
-	// buffer visible.
-	Flush()
 
 	// Frame returns the underlying frame buffer.
 	Frame() Frame

@@ -11,6 +11,8 @@ import (
 const EOF = utf8.MaxRune + 1
 
 type View struct {
+	name string
+
 	width  int
 	height int
 	win    ui.Window
@@ -24,21 +26,26 @@ func New(win ui.Window, buf *core.Buffer) *View {
 	return &View{win: win, buf: buf}
 }
 
+func (v *View) SetName(name string) { v.name = name }
+
 // Size returns the size of v.
 func (v *View) Size() (w, h int) { return v.win.Size() }
 
 func (v *View) Position() (x, y int) { return v.win.Position() }
 
-func (v *View) Frame() ui.Frame { return v.win.Frame() }
+func (v *View) Frame() ui.Frame { return v.win.Body().Frame() }
 
 func (v *View) Render() {
 	v.LoadText()
+	for _, r := range []rune(v.name) {
+		v.win.Head().WriteRune(r)
+	}
 	v.win.Flush()
 }
 
 func (v *View) LoadText() {
 	v.win.Clear()
-	v.win.Select(int(v.q0-v.origin), int(v.q1-v.origin))
+	v.win.Body().Select(int(v.q0-v.origin), int(v.q1-v.origin))
 
 	for p := v.origin; ; p++ {
 		r, _, err := v.buf.ReadRuneAt(p)
@@ -47,7 +54,7 @@ func (v *View) LoadText() {
 		} else if err != nil {
 			panic(err)
 		}
-		if err := v.win.WriteRune(r); err == io.EOF {
+		if err := v.win.Body().WriteRune(r); err == io.EOF {
 			break
 		} else if err != nil {
 			panic(err)
