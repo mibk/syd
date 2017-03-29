@@ -3,7 +3,7 @@ package ui
 // TODO: This is for temporary reasons only. Remove!
 const HeadHeight = 2
 
-type Interface interface {
+type Viewport interface {
 	// Init initialises the UI.
 	Init() error
 
