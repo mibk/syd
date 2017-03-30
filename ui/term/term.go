@@ -3,6 +3,7 @@ package term
 import (
 	"io"
 
+	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 
 	"github.com/gdamore/tcell"
@@ -75,6 +76,10 @@ func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 	}
 }
 
+func (t *UI) Push_Key_Event(ev key.Event) {
+	t.windows[0].body.keyEventHandler(ev)
+}
+
 type Window struct {
 	ui *UI
 
@@ -128,6 +133,7 @@ type Text struct {
 	hlstyle tcell.Style
 
 	mouseEventHandler ui.MouseEventHandler
+	keyEventHandler   ui.KeyEventHandler
 }
 
 func (t *Text) click(ev mouse.Event) {
@@ -138,8 +144,12 @@ func (t *Text) click(ev mouse.Event) {
 	t.mouseEventHandler(p, ev)
 }
 
-func (t *Text) OnMouseEvent(fn ui.MouseEventHandler) {
-	t.mouseEventHandler = fn
+func (t *Text) OnMouseEvent(h ui.MouseEventHandler) {
+	t.mouseEventHandler = h
+}
+
+func (t *Text) OnKeyEvent(h ui.KeyEventHandler) {
+	t.keyEventHandler = h
 }
 
 func (t *Text) clear() {

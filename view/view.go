@@ -10,6 +10,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 
 	"github.com/mibk/syd/core"
@@ -34,6 +35,7 @@ type View struct {
 func New(win *term.Window, buf *core.Buffer) *View {
 	v := &View{win: win, buf: buf}
 	v.win.Body().OnMouseEvent(v.handleMouse)
+	v.win.Body().OnKeyEvent(v.handleKeyEvent)
 	return v
 }
 
@@ -263,6 +265,48 @@ func (v *View) execute(command string) {
 	}
 }
 
+func (v *View) handleKeyEvent(ev key.Event) {
+	switch {
+	case ev.Rune == ui.KeyEnter:
+		q0, _ := v.Selected()
+		p := v.PrevNewLine(q0, 1)
+
+		var indent []rune
+		for ; ; p++ {
+			r := v.ReadRuneAt(p)
+			if r != ' ' && r != '\t' {
+				break
+			}
+			indent = append(indent, r)
+		}
+		v.Insert("\n" + string(indent))
+	case ev.Rune == ui.KeyBackspace:
+		q0, q1 := v.Selected()
+		if q0 == q1 {
+			v.Select(q0-1, q1)
+		}
+		v.DeleteSel()
+	case ev.Rune == ui.KeyDelete:
+		q0, q1 := v.Selected()
+		if q0 == q1 {
+			v.Select(q0, q1+1)
+		}
+		v.DeleteSel()
+	case ev.Rune == ui.KeyLeft:
+		left(v)
+	case ev.Rune == ui.KeyRight:
+		right(v)
+
+	case ev.Rune == ui.KeyUp:
+		up(v)
+	case ev.Rune == ui.KeyDown:
+		down(v)
+
+	default:
+		v.Insert(string(ev.Rune))
+	}
+}
+
 func (v *View) saveFile() error {
 	// TODO: Read bytes directly from the undo.Buffer.
 	// TODO: Don't use '~' suffix, make saving safer.
@@ -304,4 +348,66 @@ func (v *View) ScrollUp(nlines int) {
 
 func (v *View) ScrollDown(nlines int) {
 	v.SetOrigin(v.Origin() + int64(v.Frame().CharsUntilXY(0, nlines)))
+}
+
+////////////////
+
+// TODO: Is this the right place for these?
+
+func left(v *View) {
+	q0, _ := v.Selected()
+	v.Select(q0-1, q0-1)
+	v.Frame().SetWantCol(ui.ColQ0)
+}
+
+func right(v *View) {
+	_, q1 := v.Selected()
+	v.Select(q1+1, q1+1)
+	v.Frame().SetWantCol(ui.ColQ1)
+}
+
+func up(v *View) {
+	_, line1 := v.Frame().SelectionLines()
+	q := findQ(v, line1-1)
+	v.Select(q, q)
+}
+
+func down(v *View) {
+	_, line1 := v.Frame().SelectionLines()
+	q := findQ(v, line1+1)
+	v.Select(q, q)
+}
+
+func findQ(v *View, line int) int64 {
+	if line < 0 {
+		v.SetOrigin(v.PrevNewLine(v.Origin(), -line))
+		v.LoadText()
+		line = 0
+	} else if line > v.Frame().Lines()-1 {
+		_, h := v.Size()
+		if v.Frame().Lines() == h {
+			i := line - v.Frame().Lines() + 1
+			oldOrg := v.Origin()
+			l := v.Frame().Lines()
+			v.SetOrigin(oldOrg + int64(v.Frame().CharsUntilXY(0, i)))
+			v.LoadText()
+			if v.Frame().Lines() < l {
+				v.SetOrigin(oldOrg)
+				v.LoadText()
+			}
+		}
+		line = v.Frame().Lines() - 1
+	}
+	q := v.Origin()
+	return q + int64(v.Frame().CharsUntilXY(v.Frame().WantCol(), line))
+}
+
+func pageUp(v *View) {
+	_, h := v.Size()
+	(*View).ScrollUp(v, h)
+}
+
+func pageDown(v *View) {
+	_, h := v.Size()
+	(*View).ScrollDown(v, h)
 }

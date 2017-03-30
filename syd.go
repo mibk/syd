@@ -87,7 +87,7 @@ func (ed *Editor) Main() {
 		}
 		switch ev := ev.(type) {
 		case key.Event:
-			handleKeyPress(ed.activeView, ev)
+			UI.Push_Key_Event(ev)
 		case mouse.Event:
 			// Temporary reasons...
 			UI.Push_Mouse_Event(ev)
