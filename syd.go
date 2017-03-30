@@ -9,6 +9,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"golang.org/x/mobile/event/mouse"
+
 	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/pkg/undo"
@@ -134,51 +136,57 @@ func (ed *Editor) Main() {
 					continue
 				}
 				handleKeyPress(ed.activeView, ev)
-			case ui.MouseBtnPress:
-				switch ev.Button {
-				case ui.MouseButton1:
-					x, y := ed.activeView.Position()
-					p := ed.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y-ui.HeadHeight)
-					q := ed.activeView.Origin() + int64(p)
-					if time.Since(timestamp) < 300*time.Millisecond {
-						ed.activeView.Select(dblclick(ed.activeView, q))
+			case mouse.Event:
+				switch ev.Direction {
+				case mouse.DirPress:
+					switch ev.Button {
+					case mouse.ButtonLeft:
+						x, y := ed.activeView.Position()
+						p := ed.activeView.Frame().CharsUntilXY(int(ev.X)-x, int(ev.Y)-y-ui.HeadHeight)
+						q := ed.activeView.Origin() + int64(p)
+						if time.Since(timestamp) < 300*time.Millisecond {
+							ed.activeView.Select(dblclick(ed.activeView, q))
+							ed.activeView.Frame().SetWantCol(ui.ColQ0)
+							lastQ = -1
+							continue
+						}
+						ed.activeView.Select(q, q)
 						ed.activeView.Frame().SetWantCol(ui.ColQ0)
-						lastQ = -1
+						lastQ = q
+						timestamp = time.Now()
+					case mouse.ButtonMiddle:
+						// This is just ugly proof of concept.
+						x, y := ed.activeView.Position()
+						p := ed.activeView.Frame().CharsUntilXY(int(ev.X)-x, int(ev.Y)-y-ui.HeadHeight)
+						q := ed.activeView.Origin() + int64(p)
+						q0, q1 := dblclick(ed.activeView, q)
+						var cmd []rune
+						for i := q0; i < q1; i++ {
+							cmd = append(cmd, ed.activeView.ReadRuneAt(i))
+						}
+						ed.Execute(string(cmd))
+					}
+				case mouse.DirStep:
+					switch ev.Button {
+					case mouse.ButtonWheelUp:
+						scrollUp(ed.activeView, 3)
+					case mouse.ButtonWheelDown:
+						scrollDown(ed.activeView, 3)
+					}
+				case mouse.DirRelease:
+					lastQ = -1
+				case mouse.DirNone:
+					if lastQ < 0 {
 						continue
 					}
-					ed.activeView.Select(q, q)
-					ed.activeView.Frame().SetWantCol(ui.ColQ0)
-					lastQ = q
-					timestamp = time.Now()
-				case ui.MouseButton2:
-					// This is just ugly proof of concept.
 					x, y := ed.activeView.Position()
-					p := ed.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y-ui.HeadHeight)
-					q := ed.activeView.Origin() + int64(p)
-					q0, q1 := dblclick(ed.activeView, q)
-					var cmd []rune
-					for i := q0; i < q1; i++ {
-						cmd = append(cmd, ed.activeView.ReadRuneAt(i))
+					p := ed.activeView.Frame().CharsUntilXY(int(ev.X)-x, int(ev.Y)-y-ui.HeadHeight)
+					q0, q1 := lastQ, ed.activeView.Origin()+int64(p)
+					if q1 < q0 {
+						q0, q1 = q1, q0
 					}
-					ed.Execute(string(cmd))
-				case ui.MouseWheelUp:
-					scrollUp(ed.activeView, 3)
-				case ui.MouseWheelDown:
-					scrollDown(ed.activeView, 3)
+					ed.activeView.Select(q0, q1)
 				}
-			case ui.MouseBtnRelease:
-				lastQ = -1
-			case ui.MouseMove:
-				if lastQ < 0 {
-					continue
-				}
-				x, y := ed.activeView.Position()
-				p := ed.activeView.Frame().CharsUntilXY(ev.X-x, ev.Y-y-ui.HeadHeight)
-				q0, q1 := lastQ, ed.activeView.Origin()+int64(p)
-				if q1 < q0 {
-					q0, q1 = q1, q0
-				}
-				ed.activeView.Select(q0, q1)
 			}
 		}
 	}

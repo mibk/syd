@@ -3,6 +3,7 @@ package term
 import (
 	"github.com/gdamore/tcell"
 	"github.com/mibk/syd/ui"
+	"golang.org/x/mobile/event/mouse"
 )
 
 func (t *UI) translateEvents() {
@@ -100,41 +101,41 @@ func (t *UI) translateEvents() {
 			}
 			ui.Events <- ev
 		case *tcell.EventMouse:
+			x, y := termEv.Position()
+			ev := mouse.Event{
+				X: float32(x),
+				Y: float32(y),
+			}
 			btns := termEv.Buttons()
-			if btns == 0 {
+			switch {
+			case btns == 0:
 				if t.wasBtnPressed {
+					// TODO: Send which button was released.
 					t.wasBtnPressed = false
-					var ev ui.MouseBtnRelease
-					ev.X, ev.Y = termEv.Position()
-					ui.Events <- ev
-				} else {
-					var ev ui.MouseMove
-					ev.X, ev.Y = termEv.Position()
-					ui.Events <- ev
+					ev.Direction = mouse.DirRelease
 				}
-				continue
-			} else if t.wasBtnPressed {
-				var ev ui.MouseMove
-				ev.X, ev.Y = termEv.Position()
+				fallthrough
+			case t.wasBtnPressed:
 				ui.Events <- ev
 				continue
 			}
-			var ev ui.MouseBtnPress
-			ev.X, ev.Y = termEv.Position()
+			ev.Direction = mouse.DirPress
 			switch {
 			case btns&tcell.Button1 > 0:
-				ev.Button = ui.MouseButton1
+				ev.Button = mouse.ButtonLeft
 				t.wasBtnPressed = true
 			case btns&tcell.Button2 > 0:
-				ev.Button = ui.MouseButton2
+				ev.Button = mouse.ButtonMiddle
 				t.wasBtnPressed = true
 			case btns&tcell.Button3 > 0:
-				ev.Button = ui.MouseButton3
+				ev.Button = mouse.ButtonRight
 				t.wasBtnPressed = true
 			case btns&tcell.WheelUp > 0:
-				ev.Button = ui.MouseWheelUp
+				ev.Button = mouse.ButtonWheelUp
+				ev.Direction = mouse.DirStep
 			case btns&tcell.WheelDown > 0:
-				ev.Button = ui.MouseWheelDown
+				ev.Button = mouse.ButtonWheelDown
+				ev.Direction = mouse.DirStep
 			default:
 				continue
 			}
