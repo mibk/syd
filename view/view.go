@@ -1,8 +1,16 @@
 package view
 
 import (
+	"bytes"
 	"io"
+	"os"
+	"os/exec"
+	"strings"
+	"time"
+	"unicode"
 	"unicode/utf8"
+
+	"golang.org/x/mobile/event/mouse"
 
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/ui"
@@ -16,20 +24,22 @@ type View struct {
 	win ui.Window
 	buf *core.Buffer
 
-	origin int64
-	q0, q1 int64
+	origin    int64
+	q0, q1    int64
+	pressed   bool
+	timestamp time.Time
 }
 
 func New(win ui.Window, buf *core.Buffer) *View {
-	return &View{win: win, buf: buf}
+	v := &View{win: win, buf: buf}
+	v.win.Body().OnMouseEvent(v.handleMouse)
+	return v
 }
 
 func (v *View) SetName(name string) { v.name = name }
 
 // Size returns the size of v.
 func (v *View) Size() (w, h int) { return v.win.Size() }
-
-func (v *View) Position() (x, y int) { return v.win.Position() }
 
 func (v *View) Frame() ui.Frame { return v.win.Body().Frame() }
 
@@ -143,4 +153,152 @@ func (v *View) ReadRuneAt(off int64) rune {
 		panic(err)
 	}
 	return r
+}
+
+////////////////
+
+func (v *View) handleMouse(p int, ev mouse.Event) {
+	q := v.origin + int64(p)
+	switch ev.Direction {
+	case mouse.DirPress:
+		if ev.Button == mouse.ButtonMiddle {
+			q0, q1 := v.dblclick(q)
+			var cmd []rune
+			for i := q0; i < q1; i++ {
+				cmd = append(cmd, v.ReadRuneAt(i))
+			}
+			v.execute(string(cmd))
+			return
+		} else if ev.Button == mouse.ButtonRight {
+			return
+		}
+
+		if time.Since(v.timestamp) < 300*time.Millisecond {
+			v.Select(v.dblclick(q))
+			v.pressed = false
+			return
+		}
+		v.q0, v.q1 = q, q
+		v.pressed = true
+		v.timestamp = time.Now()
+		// TODO: Get rid of SetWantCol.
+		v.Frame().SetWantCol(ui.ColQ0)
+	case mouse.DirRelease:
+		v.pressed = false
+	case mouse.DirNone:
+		if !v.pressed {
+			return
+		}
+		v.q1 = q
+		if v.q0 > v.q1 {
+			v.q0, v.q1 = v.q1, v.q0
+		}
+	case mouse.DirStep:
+		switch ev.Button {
+		case mouse.ButtonWheelUp:
+			v.ScrollUp(3)
+		case mouse.ButtonWheelDown:
+			v.ScrollDown(3)
+		}
+	}
+}
+
+func (v *View) dblclick(q int64) (q0, q1 int64) {
+	q0, q1 = q, q
+	for q0 > 0 {
+		r := v.ReadRuneAt(q0 - 1)
+		if !isAlphaNumeric(r) {
+			break
+		}
+		q0--
+	}
+	for {
+		r := v.ReadRuneAt(q1)
+		if !isAlphaNumeric(r) {
+			break
+		}
+		q1++
+	}
+	return
+}
+
+func (v *View) execute(command string) {
+	switch command {
+	case "Exit":
+		// TODO: This is just a temporary solution
+		// until a proper solution is found.
+		ui.Events <- ui.Quit
+	case "Put":
+		if v.name != "" {
+			if err := v.saveFile(); err != nil {
+				panic(err)
+			}
+		}
+	case "Undo":
+		v.Undo()
+	case "Redo":
+		v.Redo()
+	default:
+		var selected []rune
+		q0, q1 := v.Selected()
+		for p := q0; p < q1; p++ {
+			r := v.ReadRuneAt(p)
+			selected = append(selected, r)
+		}
+		var buf bytes.Buffer
+		rd := strings.NewReader(string(selected))
+		cmd := exec.Command(command)
+		cmd.Stdin = rd
+		cmd.Stdout = &buf
+		// TODO: Redirect stderr somewhere.
+		if err := cmd.Run(); err != nil {
+			panic(err)
+		}
+		s := buf.String()
+		v.Insert(s)
+		v.Select(q0, q0+int64(utf8.RuneCountInString(s)))
+	}
+}
+
+func (v *View) saveFile() error {
+	// TODO: Read bytes directly from the undo.Buffer.
+	// TODO: Don't use '~' suffix, make saving safer.
+	f, err := os.Create(v.name + "~")
+	if err != nil {
+		return err
+	}
+
+	var buf [64]byte
+	var i int
+
+	for p := int64(0); ; p++ {
+		r := v.ReadRuneAt(p)
+		if r == EOF || len(buf[i:]) < utf8.UTFMax {
+			if _, err := f.Write(buf[:i]); err != nil {
+				return err
+			}
+			i = 0
+		}
+		if r == EOF {
+			break
+		}
+		i += utf8.EncodeRune(buf[i:], r)
+	}
+	f.Close()
+
+	return os.Rename(v.name+"~", v.name)
+}
+
+func isAlphaNumeric(r rune) bool {
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
+// TODO: Remove these.
+
+func (v *View) ScrollUp(nlines int) {
+	v.SetOrigin(v.PrevNewLine(v.Origin(), nlines))
+}
+
+func (v *View) ScrollDown(nlines int) {
+	v.SetOrigin(v.Origin() + int64(v.Frame().CharsUntilXY(0, nlines)))
 }

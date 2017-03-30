@@ -1,13 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"log"
 	"os"
-	"os/exec"
-	"strings"
-	"time"
-	"unicode/utf8"
 
 	"golang.org/x/mobile/event/mouse"
 
@@ -21,8 +16,8 @@ import (
 )
 
 var (
-	UI       = &term.UI{}
-	filename = ""
+	UI       ui.Viewport = &term.UI{}
+	filename             = ""
 )
 
 func main() {
@@ -119,16 +114,15 @@ func (ed *Editor) AddStringMotion(cmd string, fn func(*view.View, int)) {
 }
 
 func (ed *Editor) Main() {
-	var (
-		lastQ     int64 = -1
-		timestamp time.Time
-	)
 	for !ed.shouldQuit {
 		ed.activeView.Render()
 		select {
 		case action := <-ed.vi.Actions:
 			action()
 		case ev := <-ed.events:
+			if ev == ui.Quit {
+				return
+			}
 			switch ev := ev.(type) {
 			case ui.KeyPress:
 				if ev.Key == ui.KeyEscape {
@@ -137,122 +131,9 @@ func (ed *Editor) Main() {
 				}
 				handleKeyPress(ed.activeView, ev)
 			case mouse.Event:
-				switch ev.Direction {
-				case mouse.DirPress:
-					switch ev.Button {
-					case mouse.ButtonLeft:
-						x, y := ed.activeView.Position()
-						p := ed.activeView.Frame().CharsUntilXY(int(ev.X)-x, int(ev.Y)-y-ui.HeadHeight)
-						q := ed.activeView.Origin() + int64(p)
-						if time.Since(timestamp) < 300*time.Millisecond {
-							ed.activeView.Select(dblclick(ed.activeView, q))
-							ed.activeView.Frame().SetWantCol(ui.ColQ0)
-							lastQ = -1
-							continue
-						}
-						ed.activeView.Select(q, q)
-						ed.activeView.Frame().SetWantCol(ui.ColQ0)
-						lastQ = q
-						timestamp = time.Now()
-					case mouse.ButtonMiddle:
-						// This is just ugly proof of concept.
-						x, y := ed.activeView.Position()
-						p := ed.activeView.Frame().CharsUntilXY(int(ev.X)-x, int(ev.Y)-y-ui.HeadHeight)
-						q := ed.activeView.Origin() + int64(p)
-						q0, q1 := dblclick(ed.activeView, q)
-						var cmd []rune
-						for i := q0; i < q1; i++ {
-							cmd = append(cmd, ed.activeView.ReadRuneAt(i))
-						}
-						ed.Execute(string(cmd))
-					}
-				case mouse.DirStep:
-					switch ev.Button {
-					case mouse.ButtonWheelUp:
-						scrollUp(ed.activeView, 3)
-					case mouse.ButtonWheelDown:
-						scrollDown(ed.activeView, 3)
-					}
-				case mouse.DirRelease:
-					lastQ = -1
-				case mouse.DirNone:
-					if lastQ < 0 {
-						continue
-					}
-					x, y := ed.activeView.Position()
-					p := ed.activeView.Frame().CharsUntilXY(int(ev.X)-x, int(ev.Y)-y-ui.HeadHeight)
-					q0, q1 := lastQ, ed.activeView.Origin()+int64(p)
-					if q1 < q0 {
-						q0, q1 = q1, q0
-					}
-					ed.activeView.Select(q0, q1)
-				}
+				// Temporary reasons...
+				UI.Push_Mouse_Event(ev)
 			}
 		}
 	}
-}
-
-func (ed *Editor) Execute(command string) {
-	switch command {
-	case "Exit":
-		ed.shouldQuit = true
-	case "Put":
-		if filename != "" {
-			if err := saveFile(filename, ed.activeView); err != nil {
-				panic(err)
-			}
-		}
-	case "Undo":
-		ed.activeView.Undo()
-	case "Redo":
-		ed.activeView.Redo()
-	default:
-		v := ed.activeView
-		var selected []rune
-		q0, q1 := v.Selected()
-		for p := q0; p < q1; p++ {
-			r := v.ReadRuneAt(p)
-			selected = append(selected, r)
-		}
-		var buf bytes.Buffer
-		rd := strings.NewReader(string(selected))
-		cmd := exec.Command(command)
-		cmd.Stdin = rd
-		cmd.Stdout = &buf
-		// TODO: Redirect stderr somewhere.
-		if err := cmd.Run(); err != nil {
-			panic(err)
-		}
-		s := buf.String()
-		v.Insert(s)
-		v.Select(q0, q0+int64(utf8.RuneCountInString(s)))
-	}
-}
-
-func saveFile(filename string, v *view.View) error {
-	// TODO: Read bytes directly from the undo.Buffer.
-	f, err := os.Create(filename + "~")
-	if err != nil {
-		return err
-	}
-
-	var buf [64]byte
-	var i int
-
-	for p := int64(0); ; p++ {
-		r := v.ReadRuneAt(p)
-		if r == view.EOF || len(buf[i:]) < utf8.UTFMax {
-			if _, err := f.Write(buf[:i]); err != nil {
-				return err
-			}
-			i = 0
-		}
-		if r == view.EOF {
-			break
-		}
-		i += utf8.EncodeRune(buf[i:], r)
-	}
-	f.Close()
-
-	return os.Rename(filename+"~", filename)
 }

@@ -1,5 +1,7 @@
 package ui
 
+import "golang.org/x/mobile/event/mouse"
+
 // TODO: This is for temporary reasons only. Remove!
 const HeadHeight = 2
 
@@ -15,14 +17,13 @@ type Viewport interface {
 
 	// NewWindow creates a new window.
 	NewWindow() Window
+
+	Push_Mouse_Event(ev mouse.Event)
 }
 
 type Window interface {
 	// Size returns size of the window.
 	Size() (w, h int)
-
-	// Positions returns the position of the window.
-	Position() (x, y int)
 
 	// Head is the portion of the window that includes tags.
 	Head() Text
@@ -50,7 +51,11 @@ type Text interface {
 
 	// Frame returns the underlying frame buffer.
 	Frame() Frame
+
+	OnMouseEvent(MouseEventCallback)
 }
+
+type MouseEventHandler func(p int, ev mouse.Event)
 
 const (
 	ColQ0 = -1

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"unicode"
-
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/view"
 )
@@ -99,39 +97,10 @@ func findQ(v *view.View, line int) int64 {
 
 func pageUp(v *view.View) {
 	_, h := v.Size()
-	scrollUp(v, h)
-}
-
-func scrollUp(v *view.View, nlines int) {
-	v.SetOrigin(v.PrevNewLine(v.Origin(), nlines))
+	(*view.View).ScrollUp(v, h)
 }
 
 func pageDown(v *view.View) {
 	_, h := v.Size()
-	scrollDown(v, h)
+	(*view.View).ScrollDown(v, h)
 }
-
-func scrollDown(v *view.View, nlines int) {
-	v.SetOrigin(v.Origin() + int64(v.Frame().CharsUntilXY(0, nlines)))
-}
-
-func dblclick(v *view.View, q int64) (q0, q1 int64) {
-	q0, q1 = q, q
-	for q0 > 0 {
-		r := v.ReadRuneAt(q0 - 1)
-		if !isAlphaNumeric(r) {
-			break
-		}
-		q0--
-	}
-	for {
-		r := v.ReadRuneAt(q1)
-		if !isAlphaNumeric(r) {
-			break
-		}
-		q1++
-	}
-	return
-}
-
-func isAlphaNumeric(r rune) bool { return unicode.IsLetter(r) || unicode.IsDigit(r) }

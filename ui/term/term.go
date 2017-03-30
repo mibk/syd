@@ -3,6 +3,8 @@ package term
 import (
 	"io"
 
+	"golang.org/x/mobile/event/mouse"
+
 	"github.com/gdamore/tcell"
 	"github.com/mibk/syd/ui"
 )
@@ -10,6 +12,8 @@ import (
 type UI struct {
 	screen        tcell.Screen
 	wasBtnPressed bool
+
+	windows []*Window
 }
 
 func (t *UI) Init() error {
@@ -34,7 +38,7 @@ func (t *UI) Close() error {
 
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
-func (t *UI) NewWindow() *Window {
+func (t *UI) NewWindow() ui.Window {
 	head := &Text{
 		frame: new(Frame),
 		bgstyle: tcell.StyleDefault.
@@ -57,7 +61,18 @@ func (t *UI) NewWindow() *Window {
 	}
 	head.win = win
 	body.win = win
+	t.windows = append(t.windows, win)
 	return win
+}
+
+// TODO: This is for temporary reasons. Remove it.
+func (t *UI) Push_Mouse_Event(ev mouse.Event) {
+	win := t.windows[0] // TODO: It may not exist.
+	if int(ev.Y) >= win.body.y {
+		win.body.click(ev)
+	} else {
+		win.head.click(ev)
+	}
 }
 
 type Window struct {
@@ -74,10 +89,6 @@ func (win *Window) Size() (w, h int) {
 	// TODO: Return the width and height of the window.
 	w, h = win.ui.Size()
 	return w / 2, h
-}
-
-func (win *Window) Position() (x, y int) {
-	return win.x, win.y
 }
 
 func (win *Window) Head() ui.Text { return win.head }
@@ -115,6 +126,20 @@ type Text struct {
 	// styles
 	bgstyle tcell.Style
 	hlstyle tcell.Style
+
+	mouseEventHandler ui.MouseEventHandler
+}
+
+func (t *Text) click(ev mouse.Event) {
+	if t.mouseEventHandler == nil {
+		return
+	}
+	p := t.frame.CharsUntilXY(int(ev.X)-t.x, int(ev.Y)-t.y)
+	t.mouseEventHandler(p, ev)
+}
+
+func (t *Text) OnMouseEvent(fn ui.MouseEventHandler) {
+	t.mouseEventHandler = fn
 }
 
 func (t *Text) clear() {

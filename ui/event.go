@@ -4,6 +4,8 @@ var Events = make(chan Event)
 
 type Event interface{}
 
+var Quit = &struct{}{}
+
 const (
 	KeyEnter     = '\n'
 	KeyEscape    = 0x1B
