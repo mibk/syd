@@ -228,7 +228,9 @@ func (v *View) execute(command string) {
 	case "Exit":
 		// TODO: This is just a temporary solution
 		// until a proper solution is found.
-		ui.Events <- ui.Quit
+		go func() {
+			ui.Events <- ui.Quit
+		}()
 	case "Put":
 		if v.filename != "" {
 			if err := v.saveFile(); err != nil {

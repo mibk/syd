@@ -46,9 +46,7 @@ func main() {
 		vi:         vi.NewParser(),
 		activeView: view.New(win, core.NewBuffer(buf)),
 	}
-	setMappings(ed)
 	ed.activeView.SetFilename(filename)
-	go ed.RouteEvents()
 	ed.Main()
 }
 
@@ -79,61 +77,19 @@ type Editor struct {
 	mode       int
 }
 
-func (ed *Editor) RouteEvents() {
-	for ev := range ui.Events {
-		if keyPress, ok := ev.(ui.KeyPress); ok && ed.mode == ModeNormal {
-			ed.vi.Decode(keyPress)
-			continue
-		}
-		ed.events <- ev
-	}
-}
-
-func parseKeys(cmd string) []ui.KeyPress {
-	events := make([]ui.KeyPress, len(cmd))
-	for i, r := range []rune(cmd) {
-		events[i] = ui.KeyPress{Key: r}
-	}
-	return events
-}
-
-func (ed *Editor) AddOperator(cmd []ui.KeyPress, fn func(*view.View, int)) {
-	ed.vi.AddOperator(cmd, func(n int) { fn(ed.activeView, n) }, false)
-}
-
-func (ed *Editor) AddStringOperator(cmd string, fn func(*view.View, int)) {
-	ed.AddOperator(parseKeys(cmd), fn)
-}
-
-func (ed *Editor) AddMotion(cmd []ui.KeyPress, fn func(*view.View, int)) {
-	ed.vi.AddMotion(cmd, func(n int) { fn(ed.activeView, n) })
-}
-
-func (ed *Editor) AddStringMotion(cmd string, fn func(*view.View, int)) {
-	ed.AddMotion(parseKeys(cmd), fn)
-}
-
 func (ed *Editor) Main() {
 	for !ed.shouldQuit {
 		ed.activeView.Render()
-		select {
-		case action := <-ed.vi.Actions:
-			action()
-		case ev := <-ed.events:
-			if ev == ui.Quit {
-				return
-			}
-			switch ev := ev.(type) {
-			case ui.KeyPress:
-				if ev.Key == ui.KeyEscape {
-					ed.mode = ModeNormal
-					continue
-				}
-				handleKeyPress(ed.activeView, ev)
-			case mouse.Event:
-				// Temporary reasons...
-				UI.Push_Mouse_Event(ev)
-			}
+		ev := <-ui.Events
+		if ev == ui.Quit {
+			return
+		}
+		switch ev := ev.(type) {
+		case ui.KeyPress:
+			handleKeyPress(ed.activeView, ev)
+		case mouse.Event:
+			// Temporary reasons...
+			UI.Push_Mouse_Event(ev)
 		}
 	}
 }
