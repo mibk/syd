@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 
 	"github.com/edsrzf/mmap-go"
@@ -85,7 +86,7 @@ func (ed *Editor) Main() {
 			return
 		}
 		switch ev := ev.(type) {
-		case ui.KeyPress:
+		case key.Event:
 			handleKeyPress(ed.activeView, ev)
 		case mouse.Event:
 			// Temporary reasons...

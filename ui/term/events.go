@@ -3,6 +3,7 @@ package term
 import (
 	"github.com/gdamore/tcell"
 	"github.com/mibk/syd/ui"
+	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 )
 
@@ -11,93 +12,93 @@ func (t *UI) translateEvents() {
 		termEv := t.screen.PollEvent()
 		switch termEv := termEv.(type) {
 		case *tcell.EventKey:
-			var ev ui.KeyPress
+			ev := key.Event{Direction: key.DirPress}
 			switch termEv.Key() {
 			case tcell.KeyCtrlSpace:
-				ev.Key, ev.Ctrl = ' ', true
+				ev.Rune, ev.Modifiers = ' ', key.ModControl
 			case tcell.KeyCtrlA:
-				ev.Key, ev.Ctrl = 'a', true
+				ev.Rune, ev.Modifiers = 'a', key.ModControl
 			case tcell.KeyCtrlB:
-				ev.Key, ev.Ctrl = 'b', true
+				ev.Rune, ev.Modifiers = 'b', key.ModControl
 			case tcell.KeyCtrlC:
-				ev.Key, ev.Ctrl = 'c', true
+				ev.Rune, ev.Modifiers = 'c', key.ModControl
 			case tcell.KeyCtrlD:
-				ev.Key, ev.Ctrl = 'd', true
+				ev.Rune, ev.Modifiers = 'd', key.ModControl
 			case tcell.KeyCtrlE:
-				ev.Key, ev.Ctrl = 'e', true
+				ev.Rune, ev.Modifiers = 'e', key.ModControl
 			case tcell.KeyCtrlF:
-				ev.Key, ev.Ctrl = 'f', true
+				ev.Rune, ev.Modifiers = 'f', key.ModControl
 			case tcell.KeyCtrlG:
-				ev.Key, ev.Ctrl = 'g', true
+				ev.Rune, ev.Modifiers = 'g', key.ModControl
 
 			case tcell.KeyCtrlJ:
-				ev.Key, ev.Ctrl = 'j', true
+				ev.Rune, ev.Modifiers = 'j', key.ModControl
 			case tcell.KeyCtrlK:
-				ev.Key, ev.Ctrl = 'k', true
+				ev.Rune, ev.Modifiers = 'k', key.ModControl
 			case tcell.KeyCtrlL:
-				ev.Key, ev.Ctrl = 'l', true
+				ev.Rune, ev.Modifiers = 'l', key.ModControl
 
 			case tcell.KeyCtrlN:
-				ev.Key, ev.Ctrl = 'n', true
+				ev.Rune, ev.Modifiers = 'n', key.ModControl
 			case tcell.KeyCtrlO:
-				ev.Key, ev.Ctrl = 'o', true
+				ev.Rune, ev.Modifiers = 'o', key.ModControl
 			case tcell.KeyCtrlP:
-				ev.Key, ev.Ctrl = 'p', true
+				ev.Rune, ev.Modifiers = 'p', key.ModControl
 			case tcell.KeyCtrlQ:
-				ev.Key, ev.Ctrl = 'q', true
+				ev.Rune, ev.Modifiers = 'q', key.ModControl
 			case tcell.KeyCtrlR:
-				ev.Key, ev.Ctrl = 'r', true
+				ev.Rune, ev.Modifiers = 'r', key.ModControl
 			case tcell.KeyCtrlS:
-				ev.Key, ev.Ctrl = 's', true
+				ev.Rune, ev.Modifiers = 's', key.ModControl
 			case tcell.KeyCtrlT:
-				ev.Key, ev.Ctrl = 't', true
+				ev.Rune, ev.Modifiers = 't', key.ModControl
 			case tcell.KeyCtrlU:
-				ev.Key, ev.Ctrl = 'u', true
+				ev.Rune, ev.Modifiers = 'u', key.ModControl
 			case tcell.KeyCtrlV:
-				ev.Key, ev.Ctrl = 'v', true
+				ev.Rune, ev.Modifiers = 'v', key.ModControl
 			case tcell.KeyCtrlW:
-				ev.Key, ev.Ctrl = 'w', true
+				ev.Rune, ev.Modifiers = 'w', key.ModControl
 			case tcell.KeyCtrlX:
-				ev.Key, ev.Ctrl = 'x', true
+				ev.Rune, ev.Modifiers = 'x', key.ModControl
 			case tcell.KeyCtrlY:
-				ev.Key, ev.Ctrl = 'y', true
+				ev.Rune, ev.Modifiers = 'y', key.ModControl
 			case tcell.KeyCtrlZ:
-				ev.Key, ev.Ctrl = 'z', true
+				ev.Rune, ev.Modifiers = 'z', key.ModControl
 
 			case tcell.KeyEnter:
-				ev.Key = ui.KeyEnter
+				ev.Rune = ui.KeyEnter
 			case tcell.KeyTab:
-				ev.Key = '\t'
+				ev.Rune = '\t'
 			case tcell.KeyBackspace, tcell.KeyBackspace2:
-				ev.Key = ui.KeyBackspace
+				ev.Rune = ui.KeyBackspace
 			case tcell.KeyDelete:
-				ev.Key = ui.KeyDelete
+				ev.Rune = ui.KeyDelete
 			case tcell.KeyEscape:
-				ev.Key = ui.KeyEscape
+				ev.Rune = ui.KeyEscape
 			case tcell.KeyLeft:
-				ev.Key = ui.KeyLeft
+				ev.Rune = ui.KeyLeft
 			case tcell.KeyRight:
-				ev.Key = ui.KeyRight
+				ev.Rune = ui.KeyRight
 			case tcell.KeyUp:
-				ev.Key = ui.KeyUp
+				ev.Rune = ui.KeyUp
 			case tcell.KeyDown:
-				ev.Key = ui.KeyDown
+				ev.Rune = ui.KeyDown
 			case tcell.KeyPgUp:
-				ev.Key = ui.KeyPageUp
+				ev.Rune = ui.KeyPageUp
 			case tcell.KeyPgDn:
-				ev.Key = ui.KeyPageDown
+				ev.Rune = ui.KeyPageDown
 			case tcell.KeyRune:
-				ev.Key = termEv.Rune()
+				ev.Rune = termEv.Rune()
 			default:
 				continue
 			}
 
 			mod := termEv.Modifiers()
 			if mod&tcell.ModCtrl > 0 {
-				ev.Ctrl = true
+				ev.Modifiers |= key.ModControl
 			}
 			if mod&tcell.ModAlt > 0 {
-				ev.Alt = true
+				ev.Modifiers |= key.ModAlt
 			}
 			ui.Events <- ev
 		case *tcell.EventMouse:

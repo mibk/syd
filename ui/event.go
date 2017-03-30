@@ -6,6 +6,7 @@ type Event interface{}
 
 var Quit = &struct{}{}
 
+// TODO: Delete these constanst and use key.Event.Code.
 const (
 	KeyEnter     = '\n'
 	KeyEscape    = 0x1B
@@ -21,6 +22,7 @@ const (
 	KeyPageDown
 )
 
+// TODO: Delete once not needed by vi.
 type KeyPress struct {
 	Key       rune
 	Ctrl, Alt bool

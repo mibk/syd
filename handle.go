@@ -3,11 +3,12 @@ package main
 import (
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/view"
+	"golang.org/x/mobile/event/key"
 )
 
-func handleKeyPress(v *view.View, ev ui.KeyPress) {
+func handleKeyPress(v *view.View, ev key.Event) {
 	switch {
-	case ev.Key == ui.KeyEnter:
+	case ev.Rune == ui.KeyEnter:
 		q0, _ := v.Selected()
 		p := v.PrevNewLine(q0, 1)
 
@@ -20,30 +21,30 @@ func handleKeyPress(v *view.View, ev ui.KeyPress) {
 			indent = append(indent, r)
 		}
 		v.Insert("\n" + string(indent))
-	case ev.Key == ui.KeyBackspace:
+	case ev.Rune == ui.KeyBackspace:
 		q0, q1 := v.Selected()
 		if q0 == q1 {
 			v.Select(q0-1, q1)
 		}
 		v.DeleteSel()
-	case ev.Key == ui.KeyDelete:
+	case ev.Rune == ui.KeyDelete:
 		q0, q1 := v.Selected()
 		if q0 == q1 {
 			v.Select(q0, q1+1)
 		}
 		v.DeleteSel()
-	case ev.Key == ui.KeyLeft:
+	case ev.Rune == ui.KeyLeft:
 		left(v)
-	case ev.Key == ui.KeyRight:
+	case ev.Rune == ui.KeyRight:
 		right(v)
 
-	case ev.Key == ui.KeyUp:
+	case ev.Rune == ui.KeyUp:
 		up(v)
-	case ev.Key == ui.KeyDown:
+	case ev.Rune == ui.KeyDown:
 		down(v)
 
 	default:
-		v.Insert(string(ev.Key))
+		v.Insert(string(ev.Rune))
 	}
 }
 
