@@ -47,7 +47,7 @@ func main() {
 		activeView: view.New(win, core.NewBuffer(buf)),
 	}
 	setMappings(ed)
-	ed.activeView.SetName(filename)
+	ed.activeView.SetFilename(filename)
 	go ed.RouteEvents()
 	ed.Main()
 }

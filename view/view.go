@@ -20,7 +20,7 @@ import (
 const EOF = utf8.MaxRune + 1
 
 type View struct {
-	name string
+	filename string
 
 	win *term.Window
 	buf *core.Buffer
@@ -37,7 +37,7 @@ func New(win *term.Window, buf *core.Buffer) *View {
 	return v
 }
 
-func (v *View) SetName(name string) { v.name = name }
+func (v *View) SetFilename(filename string) { v.filename = filename }
 
 // Size returns the size of v.
 func (v *View) Size() (w, h int) { return v.win.Size() }
@@ -46,7 +46,7 @@ func (v *View) Frame() *term.Frame { return v.win.Body().Frame() }
 
 func (v *View) Render() {
 	v.LoadText()
-	for _, r := range []rune(v.name) {
+	for _, r := range []rune(v.filename) {
 		v.win.Head().WriteRune(r)
 	}
 	v.win.Flush()
@@ -230,7 +230,7 @@ func (v *View) execute(command string) {
 		// until a proper solution is found.
 		ui.Events <- ui.Quit
 	case "Put":
-		if v.name != "" {
+		if v.filename != "" {
 			if err := v.saveFile(); err != nil {
 				panic(err)
 			}
@@ -264,7 +264,7 @@ func (v *View) execute(command string) {
 func (v *View) saveFile() error {
 	// TODO: Read bytes directly from the undo.Buffer.
 	// TODO: Don't use '~' suffix, make saving safer.
-	f, err := os.Create(v.name + "~")
+	f, err := os.Create(v.filename + "~")
 	if err != nil {
 		return err
 	}
@@ -287,7 +287,7 @@ func (v *View) saveFile() error {
 	}
 	f.Close()
 
-	return os.Rename(v.name+"~", v.name)
+	return os.Rename(v.filename+"~", v.filename)
 }
 
 func isAlphaNumeric(r rune) bool {
