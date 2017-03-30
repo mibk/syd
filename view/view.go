@@ -14,6 +14,7 @@ import (
 
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/ui"
+	"github.com/mibk/syd/ui/term"
 )
 
 const EOF = utf8.MaxRune + 1
@@ -21,7 +22,7 @@ const EOF = utf8.MaxRune + 1
 type View struct {
 	name string
 
-	win ui.Window
+	win *term.Window
 	buf *core.Buffer
 
 	origin    int64
@@ -30,7 +31,7 @@ type View struct {
 	timestamp time.Time
 }
 
-func New(win ui.Window, buf *core.Buffer) *View {
+func New(win *term.Window, buf *core.Buffer) *View {
 	v := &View{win: win, buf: buf}
 	v.win.Body().OnMouseEvent(v.handleMouse)
 	return v
@@ -41,7 +42,7 @@ func (v *View) SetName(name string) { v.name = name }
 // Size returns the size of v.
 func (v *View) Size() (w, h int) { return v.win.Size() }
 
-func (v *View) Frame() ui.Frame { return v.win.Body().Frame() }
+func (v *View) Frame() *term.Frame { return v.win.Body().Frame() }
 
 func (v *View) Render() {
 	v.LoadText()

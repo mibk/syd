@@ -38,7 +38,7 @@ func (t *UI) Close() error {
 
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
-func (t *UI) NewWindow() ui.Window {
+func (t *UI) NewWindow() *Window {
 	head := &Text{
 		frame: new(Frame),
 		bgstyle: tcell.StyleDefault.
@@ -91,8 +91,8 @@ func (win *Window) Size() (w, h int) {
 	return w / 2, h
 }
 
-func (win *Window) Head() ui.Text { return win.head }
-func (win *Window) Body() ui.Text { return win.body }
+func (win *Window) Head() *Text { return win.head }
+func (win *Window) Body() *Text { return win.body }
 
 func (win *Window) Clear() {
 	win.head.clear()
@@ -240,7 +240,7 @@ func (t *Text) fill(height int) {
 	}
 }
 
-func (t *Text) Frame() ui.Frame { return t.frame }
+func (t *Text) Frame() *Frame { return t.frame }
 
 type Frame struct {
 	lines   [][]rune

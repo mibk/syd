@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	UI       ui.Viewport = &term.UI{}
-	filename             = ""
+	UI       = &term.UI{}
+	filename = ""
 )
 
 func main() {
