@@ -401,13 +401,3 @@ func findQ(v *View, line int) int64 {
 	q := v.Origin()
 	return q + int64(v.Frame().CharsUntilXY(v.Frame().WantCol(), line))
 }
-
-func pageUp(v *View) {
-	_, h := v.Size()
-	(*View).ScrollUp(v, h)
-}
-
-func pageDown(v *View) {
-	_, h := v.Size()
-	(*View).ScrollDown(v, h)
-}
