@@ -13,7 +13,6 @@ import (
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 	"github.com/mibk/syd/vi"
-	"github.com/mibk/syd/view"
 )
 
 var (
@@ -45,7 +44,7 @@ func main() {
 	ed := &Editor{
 		events:     make(chan ui.Event),
 		vi:         vi.NewParser(),
-		activeView: view.New(win, core.NewBuffer(buf)),
+		activeView: core.NewWindow(win, core.NewBuffer(buf)),
 	}
 	ed.activeView.SetFilename(filename)
 	ed.Main()
@@ -74,7 +73,7 @@ type Editor struct {
 	vi         *vi.Parser
 	shouldQuit bool
 
-	activeView *view.View
+	activeView *core.Window
 	mode       int
 }
 
