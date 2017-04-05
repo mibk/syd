@@ -44,7 +44,7 @@ func main() {
 	ed := &Editor{
 		events:     make(chan ui.Event),
 		vi:         vi.NewParser(),
-		activeView: core.NewWindow(win, core.NewBuffer(buf)),
+		activeView: core.NewWindow(win, core.NewUndoBuffer(buf)),
 	}
 	ed.activeView.SetFilename(filename)
 	ed.Main()

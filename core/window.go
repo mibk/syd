@@ -16,16 +16,23 @@ const EOF = utf8.MaxRune + 1
 type Window struct {
 	filename string
 	win      *term.Window
-	body     *Text
+
+	buf  *UndoBuffer
+	head *Text
+	body *Text
 }
 
-func NewWindow(window *term.Window, buf *Buffer) *Window {
-	win := &Window{win: window}
+func NewWindow(window *term.Window, buf *UndoBuffer) *Window {
+	win := &Window{win: window, buf: buf}
+	win.head = newText(win, &BasicBuffer{}, window.Head())
 	win.body = newText(win, buf, window.Body())
 	return win
 }
 
-func (win *Window) SetFilename(filename string) { win.filename = filename }
+func (win *Window) SetFilename(filename string) {
+	win.filename = filename
+	win.head.buf.Insert(0, filename+" Exit Put Undo Redo")
+}
 
 // Size returns the size of win.
 func (win *Window) Size() (w, h int) { return win.win.Size() }
@@ -34,19 +41,17 @@ func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO:
 
 func (win *Window) Render() {
 	win.LoadText()
-	for _, r := range []rune(win.filename) {
-		win.win.Head().WriteRune(r)
-	}
 	win.win.Flush()
 }
 
 func (win *Window) LoadText() {
 	win.win.Clear()
+	win.head.loadText()
 	win.body.loadText()
 }
 
-func (win *Window) Undo() { win.body.buf.Undo() }
-func (win *Window) Redo() { win.body.buf.Redo() }
+func (win *Window) Undo() { win.buf.Undo() }
+func (win *Window) Redo() { win.buf.Redo() }
 
 func (win *Window) execute(command string) {
 	switch command {

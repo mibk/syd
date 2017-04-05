@@ -16,7 +16,7 @@ import (
 type Text struct {
 	win  *Window
 	text *term.Text
-	buf  *Buffer
+	buf  Buffer
 
 	origin    int64
 	q0, q1    int64
@@ -24,7 +24,7 @@ type Text struct {
 	timestamp time.Time
 }
 
-func newText(win *Window, buf *Buffer, tt *term.Text) *Text {
+func newText(win *Window, buf Buffer, tt *term.Text) *Text {
 	t := &Text{
 		win:  win,
 		buf:  buf,

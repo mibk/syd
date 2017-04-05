@@ -7,7 +7,34 @@ import (
 	"github.com/mibk/syd/pkg/undo"
 )
 
-type Buffer struct {
+type Buffer interface {
+	ReadRuneAt(q int64) (r rune, size int, err error)
+	Insert(q int64, s string)
+	Delete(q0, q1 int64)
+}
+
+type BasicBuffer struct {
+	runes []rune
+}
+
+func (bb *BasicBuffer) ReadRuneAt(q int64) (r rune, size int, err error) {
+	i := int(q)
+	if i >= len(bb.runes) {
+		return 0, 0, io.EOF
+	}
+	r = bb.runes[i]
+	return r, utf8.RuneLen(r), nil
+}
+
+func (bb *BasicBuffer) Insert(q int64, s string) {
+	bb.runes = append(bb.runes[:q], append([]rune(s), bb.runes[q:]...)...)
+}
+
+func (bb *BasicBuffer) Delete(q0, q1 int64) {
+	bb.runes = append(bb.runes[:q0], bb.runes[q1:]...)
+}
+
+type UndoBuffer struct {
 	buf    *undo.Buffer
 	offset int64 // offset in bytes
 	pos    int64 // position in runes
@@ -15,13 +42,13 @@ type Buffer struct {
 	rb [4]byte // rune buffer
 }
 
-func NewBuffer(buf *undo.Buffer) *Buffer {
-	return &Buffer{
+func NewUndoBuffer(buf *undo.Buffer) *UndoBuffer {
+	return &UndoBuffer{
 		buf: buf,
 	}
 }
 
-func (b *Buffer) ReadRuneAt(pos int64) (r rune, size int, err error) {
+func (b *UndoBuffer) ReadRuneAt(pos int64) (r rune, size int, err error) {
 	if pos < b.pos {
 		b.offset = 0
 		b.pos = 0
@@ -39,7 +66,7 @@ func (b *Buffer) ReadRuneAt(pos int64) (r rune, size int, err error) {
 	}
 }
 
-func (b *Buffer) setPos(pos int64) (offset int64) {
+func (b *UndoBuffer) setPos(pos int64) (offset int64) {
 	if pos < b.pos {
 		b.offset = 0
 		b.pos = 0
@@ -57,7 +84,7 @@ func (b *Buffer) setPos(pos int64) (offset int64) {
 	}
 }
 
-func (b *Buffer) readRuneAtByteOffset(off int64) (rune, int, error) {
+func (b *UndoBuffer) readRuneAtByteOffset(off int64) (rune, int, error) {
 	n, err := b.buf.ReadAt(b.rb[:], off)
 	if n == 0 && err != nil {
 		return 0, 0, err
@@ -66,12 +93,12 @@ func (b *Buffer) readRuneAtByteOffset(off int64) (rune, int, error) {
 	return r, s, nil
 }
 
-func (b *Buffer) Insert(q int64, s string) {
+func (b *UndoBuffer) Insert(q int64, s string) {
 	b.setPos(q)
 	b.buf.Insert(b.offset, []byte(s))
 }
 
-func (b *Buffer) Delete(q0, q1 int64) {
+func (b *UndoBuffer) Delete(q0, q1 int64) {
 	var size int64
 	offset := b.setPos(q0)
 	for l := q1 - q0; l > 0; l-- {
@@ -89,5 +116,5 @@ func (b *Buffer) Delete(q0, q1 int64) {
 	}
 }
 
-func (b *Buffer) Undo() { b.buf.Undo() }
-func (b *Buffer) Redo() { b.buf.Redo() }
+func (b *UndoBuffer) Undo() { b.buf.Undo() }
+func (b *UndoBuffer) Redo() { b.buf.Redo() }

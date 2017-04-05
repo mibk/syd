@@ -45,20 +45,21 @@ func (t *UI) NewWindow() *Window {
 		bgstyle: tcell.StyleDefault.
 			Background(tcell.GetColor("#eaffff")),
 		hlstyle: tcell.StyleDefault.
-			Background(tcell.GetColor("#dfdf9f")),
+			Background(tcell.GetColor("#90e0e0")),
 	}
 	body := &Text{
 		frame: new(Frame),
 		bgstyle: tcell.StyleDefault.
 			Background(tcell.GetColor("#ffffea")),
 		hlstyle: tcell.StyleDefault.
-			Background(tcell.GetColor("#dfdf9f")),
+			Background(tcell.GetColor("#e0e090")),
 	}
 	win := &Window{
 		x: 1, y: 1, // For testing purposes.
-		ui:   t,
-		head: head,
-		body: body,
+		ui:     t,
+		head:   head,
+		body:   body,
+		active: body,
 	}
 	head.win = win
 	body.win = win
@@ -71,13 +72,15 @@ func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 	win := t.windows[0] // TODO: It may not exist.
 	if int(ev.Y) >= win.body.y {
 		win.body.click(ev)
+		win.active = win.body
 	} else {
 		win.head.click(ev)
+		win.active = win.head
 	}
 }
 
 func (t *UI) Push_Key_Event(ev key.Event) {
-	t.windows[0].body.keyEventHandler(ev)
+	t.windows[0].active.keyEventHandler(ev)
 }
 
 type Window struct {
@@ -86,8 +89,9 @@ type Window struct {
 	width, height int
 	x, y          int
 
-	head *Text
-	body *Text
+	head   *Text
+	body   *Text
+	active *Text // will receive key events
 }
 
 func (win *Window) Size() (w, h int) {
@@ -202,17 +206,17 @@ func (t *Text) checkSelection() {
 	}
 }
 
+var reverse = tcell.StyleDefault.Reverse(true)
+
 func (t *Text) flush() {
 	width, _ := t.win.Size()
 	style := t.bgstyle
 	selText := func(p, x, y int) {
-		if p == t.cur.p0 {
-			if t.cur.p0 == t.cur.p1 {
-				t.win.ui.screen.ShowCursor(t.x+x, t.y+y)
-			} else {
-				style = t.hlstyle
-			}
-		} else if p == t.cur.p1 {
+		if p == t.cur.p0 && t.cur.p0 == t.cur.p1 {
+			style = reverse
+		} else if p >= t.cur.p0 && p < t.cur.p1 {
+			style = t.hlstyle
+		} else {
 			style = t.bgstyle
 		}
 	}
@@ -230,12 +234,18 @@ func (t *Text) flush() {
 			for i := 0; i < w; i++ {
 				t.win.ui.screen.SetContent(t.x+x, t.y+y, r, nil, style)
 				x += 1
+				if style == reverse {
+					style = t.bgstyle
+				}
 			}
 			p++
 		}
 		selText(p, x, y)
 		for ; x < width; x++ {
 			t.win.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, style)
+			if style == reverse {
+				style = t.bgstyle
+			}
 		}
 		p++
 	}
