@@ -114,8 +114,7 @@ func (win *Window) Flush() {
 	win.head.y = win.y
 	win.body.x = win.x
 	win.head.flush()
-	win.head.fill(ui.HeadHeight + 1)
-	win.body.y = win.y + ui.HeadHeight
+	win.body.y = win.y + len(win.head.frame.lines)
 	win.ui.screen.HideCursor()
 	win.body.flush()
 	win.body.fill(height)

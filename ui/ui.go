@@ -5,9 +5,6 @@ import (
 	"golang.org/x/mobile/event/mouse"
 )
 
-// TODO: This is for temporary reasons only. Remove!
-const HeadHeight = 2
-
 type MouseEventHandler func(p int, ev mouse.Event)
 
 type KeyEventHandler func(ev key.Event)
