@@ -42,11 +42,11 @@ func main() {
 
 	win := UI.NewWindow()
 	ed := &Editor{
-		events:     make(chan ui.Event),
-		vi:         vi.NewParser(),
-		activeView: core.NewWindow(win, core.NewUndoBuffer(buf)),
+		events:    make(chan ui.Event),
+		vi:        vi.NewParser(),
+		activeWin: core.NewWindow(win, core.NewUndoBuffer(buf)),
 	}
-	ed.activeView.SetFilename(filename)
+	ed.activeWin.SetFilename(filename)
 	ed.Main()
 }
 
@@ -73,13 +73,13 @@ type Editor struct {
 	vi         *vi.Parser
 	shouldQuit bool
 
-	activeView *core.Window
-	mode       int
+	activeWin *core.Window
+	mode      int
 }
 
 func (ed *Editor) Main() {
 	for !ed.shouldQuit {
-		ed.activeView.Render()
+		ed.activeWin.Render()
 		ev := <-ui.Events
 		if ev == ui.Quit {
 			return
