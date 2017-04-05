@@ -311,8 +311,6 @@ func tabWidthForCol(col int) int {
 	return w
 }
 
-func (f *Frame) MaxLines() int { panic("not implemented") }
-func (f *Frame) Lines() int    { return len(f.lines) }
-
+func (f *Frame) Lines() int         { return len(f.lines) }
 func (f *Frame) WantCol() int       { return f.wantCol }
 func (f *Frame) SetWantCol(col int) { f.wantCol = col }
