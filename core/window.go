@@ -92,6 +92,9 @@ func (win *Window) execute(command string) {
 		s := buf.String()
 		win.body.Insert(s)
 		win.body.Select(q0, q0+int64(utf8.RuneCountInString(s)))
+
+		// TODO: Come up with a better solution
+		win.buf.buf.CommitChanges()
 	}
 }
 
