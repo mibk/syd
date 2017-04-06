@@ -86,7 +86,13 @@ func (win *Window) execute(command string) {
 		cmd.Stdin = rd
 		cmd.Stdout = &buf
 		// TODO: Redirect stderr somewhere.
-		if err := cmd.Run(); err != nil {
+		switch err := cmd.Run(); err := err.(type) {
+		case *exec.Error:
+			if err.Err == exec.ErrNotFound {
+				return
+			}
+			panic(err)
+		case error:
 			panic(err)
 		}
 		s := buf.String()
