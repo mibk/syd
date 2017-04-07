@@ -20,7 +20,7 @@ type Text struct {
 
 	origin    int64
 	q0, q1    int64
-	pressed   bool
+	selEnd    *int64
 	timestamp time.Time
 }
 
@@ -153,23 +153,28 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 
 		if time.Since(t.timestamp) < 300*time.Millisecond {
 			t.Select(t.dblclick(q))
-			t.pressed = false
+			t.selEnd = nil
 			return
 		}
 		t.q0, t.q1 = q, q
-		t.pressed = true
+		t.selEnd = &t.q1
 		t.timestamp = time.Now()
 		// TODO: Get rid of SetWantCol.
 		t.text.Frame().SetWantCol(ui.ColQ0)
 	case mouse.DirRelease:
-		t.pressed = false
+		t.selEnd = nil
 	case mouse.DirNone:
-		if !t.pressed {
+		if t.selEnd == nil {
 			return
 		}
-		t.q1 = q
+		*t.selEnd = q
 		if t.q0 > t.q1 {
 			t.q0, t.q1 = t.q1, t.q0
+			if t.selEnd == &t.q0 {
+				t.selEnd = &t.q1
+			} else {
+				t.selEnd = &t.q0
+			}
 		}
 	case mouse.DirStep:
 		switch ev.Button {
