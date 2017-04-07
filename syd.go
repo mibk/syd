@@ -7,9 +7,7 @@ import (
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 
-	"github.com/edsrzf/mmap-go"
 	"github.com/mibk/syd/core"
-	"github.com/mibk/syd/pkg/undo"
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 	"github.com/mibk/syd/vi"
@@ -28,39 +26,28 @@ func main() {
 	}
 	defer UI.Close()
 
-	var b []byte
+	var con core.Content = core.BytesContent([]byte{})
 	if len(os.Args) > 1 {
 		filename = os.Args[1]
-		m, err := readFile(filename)
+		f, err := os.Open(filename)
 		if err != nil {
 			panic(err)
 		}
-		defer m.Unmap()
-		b = []byte(m)
+		con, err = core.Mmap(f)
+		if err != nil {
+			panic(err)
+		}
 	}
-	buf := undo.NewBuffer(b)
 
 	win := UI.NewWindow()
 	ed := &Editor{
 		events:    make(chan ui.Event),
 		vi:        vi.NewParser(),
-		activeWin: core.NewWindow(win, core.NewUndoBuffer(buf)),
+		activeWin: core.NewWindow(win, con),
 	}
 	ed.activeWin.SetFilename(filename)
+	defer ed.activeWin.Close()
 	ed.Main()
-}
-
-func readFile(filename string) (mmap.MMap, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := mmap.Map(f, 0, 0)
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
 }
 
 const (

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/mibk/syd/pkg/undo"
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 )
@@ -16,13 +17,15 @@ const EOF = utf8.MaxRune + 1
 type Window struct {
 	filename string
 	win      *term.Window
+	con      Content
 
 	buf  *UndoBuffer
 	head *Text
 	body *Text
 }
 
-func NewWindow(window *term.Window, buf *UndoBuffer) *Window {
+func NewWindow(window *term.Window, con Content) *Window {
+	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
 	win := &Window{win: window, buf: buf}
 	win.head = newText(win, &BasicBuffer{}, window.Head())
 	win.body = newText(win, buf, window.Body())
@@ -52,6 +55,10 @@ func (win *Window) LoadText() {
 
 func (win *Window) Undo() { win.buf.Undo() }
 func (win *Window) Redo() { win.buf.Redo() }
+
+func (win *Window) Close() error {
+	return win.con.Close()
+}
 
 func (win *Window) execute(command string) {
 	switch command {
