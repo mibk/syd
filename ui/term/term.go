@@ -167,8 +167,11 @@ func (t *Text) clear() {
 func (t *Text) Select(p0, p1 int) { t.cur.p0, t.cur.p1 = p0, p1 }
 
 func (t *Text) WriteRune(r rune) error {
-	if r != '\n' {
-		t.frame.lines[t.cur.y] = append(t.frame.lines[t.cur.y], r)
+	t.frame.lines[t.cur.y] = append(t.frame.lines[t.cur.y], r)
+	if r == '\t' {
+		t.cur.x += tabWidthForCol(t.cur.x)
+	} else {
+		t.cur.x++
 	}
 
 	w, h := t.win.Size()
@@ -179,11 +182,8 @@ func (t *Text) WriteRune(r rune) error {
 		if t.cur.y == h {
 			return io.EOF
 		}
-	} else if r == '\t' {
-		t.cur.x += tabWidthForCol(t.cur.x)
-	} else {
-		t.cur.x++
 	}
+
 	t.frame.nchars++
 	t.checkSelection()
 	return nil
@@ -210,7 +210,7 @@ var reverse = tcell.StyleDefault.Reverse(true)
 func (t *Text) flush() {
 	width, _ := t.win.Size()
 	style := t.bgstyle
-	selText := func(p, x, y int) {
+	selStyle := func(p int) {
 		if p == t.cur.p0 && t.cur.p0 == t.cur.p1 {
 			style = reverse
 		} else if p >= t.cur.p0 && p < t.cur.p1 {
@@ -223,30 +223,34 @@ func (t *Text) flush() {
 	for y, l := range t.frame.lines {
 		x := 0
 		for _, r := range l {
-			selText(p, x, y)
+			selStyle(p)
+			p++
+			if r == '\n' {
+				goto fill
+			}
 			w := 1
 			if r == '\t' {
 				r = ' '
 				w = tabWidthForCol(x)
-
 			}
-			for i := 0; i < w; i++ {
+			for i := 0; i < w && x < width; i++ {
+				// TODO: Should the rest of the tab at the end of a
+				// line span the begining of the next line?
 				t.win.ui.screen.SetContent(t.x+x, t.y+y, r, nil, style)
-				x += 1
+				x++
 				if style == reverse {
 					style = t.bgstyle
 				}
 			}
-			p++
 		}
-		selText(p, x, y)
+		selStyle(p)
+	fill:
 		for ; x < width; x++ {
 			t.win.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, style)
 			if style == reverse {
 				style = t.bgstyle
 			}
 		}
-		p++
 	}
 }
 
@@ -281,12 +285,15 @@ func (f *Frame) CharsUntilXY(x, y int) int {
 		if n == y {
 			return p + charsUntilX(l, x)
 		}
-		p += len(l) + 1 // + '\n'
+		p += len(l)
 	}
 	return 0
 }
 
 func charsUntilX(s []rune, x int) int {
+	if len(s) == 0 {
+		return 0
+	}
 	var w int
 	for i, r := range s {
 		if r == '\t' {
@@ -297,6 +304,9 @@ func charsUntilX(s []rune, x int) int {
 		if w > x {
 			return i
 		}
+	}
+	if s[len(s)-1] == '\n' {
+		return len(s) - 1
 	}
 	return len(s)
 }
