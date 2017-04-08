@@ -14,7 +14,8 @@ type UI struct {
 	screen        tcell.Screen
 	wasBtnPressed bool
 
-	windows []*Window
+	windows    []*Window
+	activeText *Text // will receive key events
 }
 
 func (t *UI) Init() error {
@@ -54,33 +55,50 @@ func (t *UI) NewWindow() *Window {
 		hlstyle: tcell.StyleDefault.
 			Background(tcell.GetColor("#e0e090")),
 	}
+	w, h := t.Size()
 	win := &Window{
 		x: 1, y: 1, // For testing purposes.
-		ui:     t,
-		head:   head,
-		body:   body,
-		active: body,
+		width: w / 2,
+		ui:    t,
+		head:  head,
+		body:  body,
 	}
 	head.win = win
 	body.win = win
+
+	if cnt := len(t.windows); cnt == 0 {
+		t.activeText = body
+		win.height = h - 2 // TODO: Just for testing.
+	} else {
+		prev := t.windows[cnt-1]
+		win.height = prev.height / 2
+		prev.height -= prev.height / 2
+		win.y = prev.y + prev.height
+	}
 	t.windows = append(t.windows, win)
 	return win
 }
 
 // TODO: This is for temporary reasons. Remove it.
 func (t *UI) Push_Mouse_Event(ev mouse.Event) {
-	win := t.windows[0] // TODO: It may not exist.
-	if int(ev.Y) >= win.body.y {
-		win.body.click(ev)
-		win.active = win.body
-	} else {
-		win.head.click(ev)
-		win.active = win.head
+	y := int(ev.Y)
+	for _, win := range t.windows {
+		if y < win.y || y >= win.y+win.height {
+			continue
+		}
+		if y >= win.body.y {
+			win.body.click(ev)
+			t.activeText = win.body
+		} else {
+			win.head.click(ev)
+			t.activeText = win.head
+		}
+		break
 	}
 }
 
 func (t *UI) Push_Key_Event(ev key.Event) {
-	t.windows[0].active.keyEventHandler(ev)
+	t.activeText.keyEventHandler(ev)
 }
 
 type Window struct {
@@ -89,35 +107,46 @@ type Window struct {
 	width, height int
 	x, y          int
 
-	head   *Text
-	body   *Text
-	active *Text // will receive key events
+	head *Text
+	body *Text
 }
 
 func (win *Window) Size() (w, h int) {
-	// TODO: Return the width and height of the window.
-	w, h = win.ui.Size()
-	return w / 2, h
+	return win.width, win.height
 }
 
 func (win *Window) Head() *Text { return win.head }
 func (win *Window) Body() *Text { return win.body }
 
 func (win *Window) Clear() {
+	win.head.width = win.width
+	win.head.height = win.height
 	win.head.clear()
+
+	win.body.width = win.width
+	win.body.height = win.height
 	win.body.clear()
 }
 
 func (win *Window) Flush() {
-	_, height := win.Size()
 	win.head.x = win.x
 	win.head.y = win.y
-	win.body.x = win.x
 	win.head.flush()
-	win.body.y = win.y + len(win.head.frame.lines)
-	win.ui.screen.HideCursor()
+
+	h := len(win.head.frame.lines)
+	win.head.height = h
+
+	win.body.height = win.height - h
+	if len(win.body.frame.lines) > win.body.height {
+		// TODO: We didn't know how many lines will the head of the window
+		// span. Can we do better?
+		win.body.frame.lines = win.body.frame.lines[:win.body.height]
+	}
+	win.body.x = win.x
+	win.body.y = win.y + h
 	win.body.flush()
-	win.body.fill(height)
+	win.body.fill()
+
 	win.ui.screen.Show()
 }
 
@@ -125,8 +154,9 @@ type Text struct {
 	win   *Window
 	frame *Frame
 
-	x, y int
-	cur  struct {
+	width, height int
+	x, y          int
+	cur           struct {
 		p0, p1 int // char position
 		x, y   int // current position
 	}
@@ -174,12 +204,11 @@ func (t *Text) WriteRune(r rune) error {
 		t.cur.x++
 	}
 
-	w, h := t.win.Size()
-	if t.cur.x >= w || r == '\n' {
+	if t.cur.x >= t.width || r == '\n' {
 		t.cur.y++
 		t.cur.x = 0
 		t.frame.lines = append(t.frame.lines, nil)
-		if t.cur.y == h {
+		if t.cur.y == t.height {
 			return io.EOF
 		}
 	}
@@ -208,7 +237,6 @@ func (t *Text) checkSelection() {
 var reverse = tcell.StyleDefault.Reverse(true)
 
 func (t *Text) flush() {
-	width, _ := t.win.Size()
 	style := t.bgstyle
 	selStyle := func(p int) {
 		if p == t.cur.p0 && t.cur.p0 == t.cur.p1 {
@@ -233,7 +261,7 @@ func (t *Text) flush() {
 				r = ' '
 				w = tabWidthForCol(x)
 			}
-			for i := 0; i < w && x < width; i++ {
+			for i := 0; i < w && x < t.width; i++ {
 				// TODO: Should the rest of the tab at the end of a
 				// line span the begining of the next line?
 				t.win.ui.screen.SetContent(t.x+x, t.y+y, r, nil, style)
@@ -245,7 +273,7 @@ func (t *Text) flush() {
 		}
 		selStyle(p)
 	fill:
-		for ; x < width; x++ {
+		for ; x < t.width; x++ {
 			t.win.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, style)
 			if style == reverse {
 				style = t.bgstyle
@@ -254,11 +282,12 @@ func (t *Text) flush() {
 	}
 }
 
-func (t *Text) fill(height int) {
-	width, _ := t.win.Size()
-	for y := len(t.frame.lines) + t.y; y < height; y++ {
-		for x := 0; x < width; x++ {
-			t.win.ui.screen.SetContent(t.win.x+x, y, ' ', nil, t.bgstyle)
+func (t *Text) fill() {
+	// TODO: Using this bg color just for testing purposes.
+	bg := tcell.StyleDefault.Background(tcell.GetColor("#ffe0ff"))
+	for y := len(t.frame.lines); y < t.height; y++ {
+		for x := 0; x < t.width; x++ {
+			t.win.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, bg)
 		}
 	}
 }

@@ -26,27 +26,19 @@ func main() {
 	}
 	defer UI.Close()
 
-	var con core.Content = core.BytesContent([]byte{})
-	if len(os.Args) > 1 {
-		filename = os.Args[1]
-		f, err := os.Open(filename)
-		if err != nil {
-			panic(err)
-		}
-		con, err = core.Mmap(f)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	win := UI.NewWindow()
 	ed := &Editor{
-		events:    make(chan ui.Event),
-		vi:        vi.NewParser(),
-		activeWin: core.NewWindow(win, con),
+		events: make(chan ui.Event),
+		vi:     vi.NewParser(),
 	}
-	ed.activeWin.SetFilename(filename)
-	defer ed.activeWin.Close()
+	if len(os.Args) == 1 {
+		ed.NewWindow()
+	} else {
+		for _, a := range os.Args[1:] {
+			if err := ed.NewWindowFile(a); err != nil {
+				panic(err)
+			}
+		}
+	}
 	ed.Main()
 }
 
@@ -60,13 +52,15 @@ type Editor struct {
 	vi         *vi.Parser
 	shouldQuit bool
 
-	activeWin *core.Window
-	mode      int
+	wins []*core.Window
+	mode int
 }
 
 func (ed *Editor) Main() {
 	for !ed.shouldQuit {
-		ed.activeWin.Render()
+		for _, win := range ed.wins {
+			win.Render()
+		}
 		ev := <-ui.Events
 		if ev == ui.Quit {
 			return
@@ -79,4 +73,36 @@ func (ed *Editor) Main() {
 			UI.Push_Mouse_Event(ev)
 		}
 	}
+}
+
+func (ed *Editor) NewWindow() {
+	ed.newWindow(core.BytesContent([]byte{}))
+}
+
+func (ed *Editor) NewWindowFile(filename string) error {
+	f, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	mm, err := core.Mmap(f)
+	if err != nil {
+		return err
+	}
+	win := ed.newWindow(mm)
+	win.SetFilename(filename)
+	return nil
+}
+
+func (ed *Editor) newWindow(con core.Content) *core.Window {
+	win := core.NewWindow(UI.NewWindow(), con)
+	ed.wins = append(ed.wins, win)
+	return win
+}
+
+func (ed *Editor) Close() error {
+	for _, win := range ed.wins {
+		// TODO: Check errors.
+		win.Close()
+	}
+	return nil
 }
