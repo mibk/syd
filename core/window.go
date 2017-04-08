@@ -27,14 +27,15 @@ type Window struct {
 func NewWindow(window *term.Window, con Content) *Window {
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
 	win := &Window{win: window, buf: buf}
-	win.head = newText(win, &BasicBuffer{}, window.Head())
+	win.head = newText(win, &BasicBuffer{[]rune(" Exit Put Undo Redo ")}, window.Head())
 	win.body = newText(win, buf, window.Body())
 	return win
 }
 
 func (win *Window) SetFilename(filename string) {
 	win.filename = filename
-	win.head.buf.Insert(0, filename+" Exit Put Undo Redo")
+	win.head.buf.Insert(0, filename)
+	// TODO: Move the cursor to the end of the line.
 }
 
 // Size returns the size of win.
