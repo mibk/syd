@@ -66,9 +66,22 @@ func (ed *Editor) NewWindowFile(filename string) error {
 }
 
 func (ed *Editor) newWindow(con Content) *Window {
-	win := NewWindow(ed.ui.NewWindow(), con)
+	win := NewWindow(ed, ed.ui.NewWindow(), con)
 	ed.wins = append(ed.wins, win)
 	return win
+}
+
+func (ed *Editor) deleteWindow(todel *Window) {
+	for i, win := range ed.wins {
+		if win == todel {
+			ed.wins = append(ed.wins[:i], ed.wins[i+1:]...)
+			if len(ed.wins) == 0 {
+				ed.shouldQuit = true
+			}
+			return
+		}
+	}
+	panic("window not found")
 }
 
 func (ed *Editor) Close() error {

@@ -87,6 +87,23 @@ func (t *UI) NewWindow() *Window {
 	return win
 }
 
+func (t *UI) deleteWindow(todel *Window) {
+	sentinel := &Window{nextWin: t.firstWin}
+	win := sentinel
+	for win.nextWin != nil {
+		if win.nextWin == todel {
+			win.nextWin = todel.nextWin
+			t.firstWin = sentinel.nextWin
+			if t.firstWin != nil {
+				t.firstWin.y = t.y
+			}
+			return
+		}
+		win = win.nextWin
+	}
+	panic("window not found")
+}
+
 func (t *UI) Flush() {
 	win := t.firstWin
 	for win != nil {
@@ -221,6 +238,10 @@ func (win *Window) Clear() {
 	win.body.width = win.width
 	win.body.height = h
 	win.body.clear()
+}
+
+func (win *Window) Delete() {
+	win.ui.deleteWindow(win)
 }
 
 func (win *Window) flush() {

@@ -15,6 +15,7 @@ import (
 const EOF = utf8.MaxRune + 1
 
 type Window struct {
+	ed       *Editor
 	filename string
 	win      *term.Window
 	con      Content
@@ -24,10 +25,10 @@ type Window struct {
 	body *Text
 }
 
-func NewWindow(window *term.Window, con Content) *Window {
+func NewWindow(ed *Editor, window *term.Window, con Content) *Window {
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
-	win := &Window{win: window, buf: buf}
-	win.head = newText(win, &BasicBuffer{[]rune(" Exit Put Undo Redo ")}, window.Head())
+	win := &Window{ed: ed, win: window, con: con, buf: buf}
+	win.head = newText(win, &BasicBuffer{[]rune(" Exit Del Put Undo Redo ")}, window.Head())
 	win.body = newText(win, buf, window.Body())
 	return win
 }
@@ -53,6 +54,8 @@ func (win *Window) Undo() { win.buf.Undo() }
 func (win *Window) Redo() { win.buf.Redo() }
 
 func (win *Window) Close() error {
+	win.win.Delete()
+	win.ed.deleteWindow(win)
 	return win.con.Close()
 }
 
@@ -64,6 +67,8 @@ func (win *Window) execute(command string) {
 		go func() {
 			ui.Events <- ui.Quit
 		}()
+	case "Del":
+		win.Close()
 	case "Put":
 		if win.filename != "" {
 			if err := win.saveFile(); err != nil {
