@@ -141,12 +141,16 @@ func (t *UI) lastWin() *Window {
 }
 
 func (t *UI) moveGrabbedWin(y int) {
+	gw := t.grabbedWin
+	t.grabbedWin = nil
 	target := t.firstWin
+
 	if target.nextWin == nil {
 		// Cannot move anything if there's just one
 		// window.
 		return
 	}
+
 	for target != nil {
 		if y >= target.y && y < target.y+target.height() {
 			break
@@ -154,12 +158,39 @@ func (t *UI) moveGrabbedWin(y int) {
 		target = target.nextWin
 	}
 
-	if t.grabbedWin == target || (target.nextWin != nil && t.grabbedWin == target.nextWin) {
-		if t.grabbedWin != t.firstWin {
-			t.grabbedWin.y = y
-		}
+	if y == target.y {
+		// TODO: If this happens, adjust position of the windows
+		// to ensure at least one line of each window is shown.
+		// Forbid it for now as it would cause panic otherwise.
+		return
 	}
-	t.grabbedWin = nil
+
+	if gw == target || (target.nextWin != nil && gw == target.nextWin) {
+		if gw == t.firstWin {
+			return
+		}
+	} else {
+		t.moveWin(gw, target)
+	}
+	gw.y = y
+}
+
+func (t *UI) moveWin(win, after *Window) {
+	sentinel := &Window{nextWin: t.firstWin}
+	prev := sentinel
+	for prev.nextWin != nil {
+		if prev.nextWin == win {
+			prev.nextWin = win.nextWin
+			win.nextWin = after.nextWin
+			after.nextWin = win
+
+			t.firstWin = sentinel.nextWin
+			t.firstWin.y = t.y
+			return
+		}
+		prev = prev.nextWin
+	}
+	panic("window not found")
 }
 
 type Window struct {
