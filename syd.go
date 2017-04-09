@@ -59,8 +59,9 @@ type Editor struct {
 func (ed *Editor) Main() {
 	for !ed.shouldQuit {
 		for _, win := range ed.wins {
-			win.Render()
+			win.LoadText()
 		}
+		UI.Flush()
 		ev := <-ui.Events
 		if ev == ui.Quit {
 			return

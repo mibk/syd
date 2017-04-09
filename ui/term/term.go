@@ -14,9 +14,13 @@ type UI struct {
 	screen        tcell.Screen
 	wasBtnPressed bool
 
-	windows    []*Window
-	activeText *Text // will receive key events
-	grabbedWin int   // index of the grabbed win or -1
+	y      int
+	width  int
+	height int
+
+	firstWin   *Window
+	activeText *Text   // will receive key events
+	grabbedWin *Window // index of the grabbed win or nil
 }
 
 func (t *UI) Init() error {
@@ -29,7 +33,12 @@ func (t *UI) Init() error {
 	}
 	sc.EnableMouse()
 	t.screen = sc
-	t.grabbedWin = -1
+
+	// TODO: Just for testing purposes.
+	t.y = 1
+	w, h := t.Size()
+	t.width = w / 2
+	t.height = h - 2
 
 	go t.translateEvents()
 	return nil
@@ -57,10 +66,9 @@ func (t *UI) NewWindow() *Window {
 		hlstyle: tcell.StyleDefault.
 			Background(tcell.GetColor("#e0e090")),
 	}
-	w, h := t.Size()
 	win := &Window{
-		y:     1, // For testing purposes.
-		width: w / 2,
+		y:     t.y,
+		width: t.width,
 		ui:    t,
 		head:  head,
 		body:  body,
@@ -68,30 +76,38 @@ func (t *UI) NewWindow() *Window {
 	head.win = win
 	body.win = win
 
-	if cnt := len(t.windows); cnt == 0 {
+	if t.firstWin == nil {
 		t.activeText = body
-		win.height = h - 2 // TODO: Just for testing.
+		t.firstWin = win
 	} else {
-		prev := t.windows[cnt-1]
-		win.height = prev.height / 2
-		prev.height -= prev.height / 2
-		win.y = prev.y + prev.height
+		prev := t.lastWin()
+		win.y = prev.y + prev.height()/2
+		prev.nextWin = win
 	}
-	t.windows = append(t.windows, win)
 	return win
+}
+
+func (t *UI) Flush() {
+	win := t.firstWin
+	for win != nil {
+		win.flush()
+		win = win.nextWin
+	}
 }
 
 // TODO: This is for temporary reasons. Remove it.
 func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 	y := int(ev.Y)
-	if t.grabbedWin != -1 {
+	if t.grabbedWin != nil {
 		if ev.Direction == mouse.DirRelease {
 			t.moveGrabbedWin(y)
 		}
 		return
 	}
-	for i, win := range t.windows {
-		if y < win.y || y >= win.y+win.height {
+	win := t.firstWin
+	for win != nil {
+		if y < win.y || y >= win.y+win.height() {
+			win = win.nextWin
 			continue
 		}
 		if y >= win.body.y {
@@ -99,7 +115,7 @@ func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 			t.activeText = win.body
 		} else {
 			if int(ev.X) == win.x && ev.Direction == mouse.DirPress {
-				t.grabbedWin = i
+				t.grabbedWin = win
 				break
 			}
 			win.head.click(ev)
@@ -113,64 +129,70 @@ func (t *UI) Push_Key_Event(ev key.Event) {
 	t.activeText.keyEventHandler(ev)
 }
 
-func (t *UI) moveGrabbedWin(y int) {
-	targetI := -1
-	for i, win := range t.windows {
-		if y >= win.y && y < win.y+win.height {
-			targetI = i
-			break
-		}
+func (t *UI) lastWin() *Window {
+	win := t.firstWin
+	if win == nil {
+		return nil
 	}
-
-	if targetI == t.grabbedWin || targetI == t.grabbedWin-1 {
-		if t.grabbedWin != 0 {
-			t.resizeNeighbours(t.grabbedWin, y)
-		}
+	for win.nextWin != nil {
+		win = win.nextWin
 	}
-	t.grabbedWin = -1
+	return win
 }
 
-func (t *UI) resizeNeighbours(i, y int) {
-	if i <= 0 {
-		panic("cannot resize window on position 0")
+func (t *UI) moveGrabbedWin(y int) {
+	target := t.firstWin
+	if target.nextWin == nil {
+		// Cannot move anything if there's just one
+		// window.
+		return
 	}
-	gw := t.windows[i]
-	oldy := gw.y
-	gw.y = y
-	gw.height -= y - oldy
+	for target != nil {
+		if y >= target.y && y < target.y+target.height() {
+			break
+		}
+		target = target.nextWin
+	}
 
-	prev := t.windows[i-1]
-	prev.height += y - oldy
+	if t.grabbedWin == target || (target.nextWin != nil && t.grabbedWin == target.nextWin) {
+		if t.grabbedWin != t.firstWin {
+			t.grabbedWin.y = y
+		}
+	}
+	t.grabbedWin = nil
 }
 
 type Window struct {
 	ui *UI
 
-	width, height int
-	x, y          int
+	width int
+	x, y  int
 
 	head *Text
 	body *Text
+
+	nextWin *Window
 }
 
 func (win *Window) Size() (w, h int) {
-	return win.width, win.height
+	return win.width, win.height()
 }
 
 func (win *Window) Head() *Text { return win.head }
 func (win *Window) Body() *Text { return win.body }
 
 func (win *Window) Clear() {
+	h := win.height()
 	win.head.width = win.width - 1
-	win.head.height = win.height - 1
+	win.head.height = h - 1
 	win.head.clear()
 
 	win.body.width = win.width
-	win.body.height = win.height
+	win.body.height = h
 	win.body.clear()
 }
 
-func (win *Window) Flush() {
+func (win *Window) flush() {
 	win.head.x = win.x + 1
 	win.head.y = win.y
 	win.head.flush()
@@ -182,11 +204,12 @@ func (win *Window) Flush() {
 	for ; y < h; y++ {
 		win.ui.screen.SetContent(win.x, win.y+y, ' ', nil, win.head.bgstyle)
 	}
-	for ; y < win.height; y++ {
+	winh := win.height()
+	for ; y < winh; y++ {
 		win.ui.screen.SetContent(win.x, win.y+y, ' ', nil, win.body.bgstyle)
 	}
 
-	win.body.height = win.height - h
+	win.body.height = winh - h
 	if len(win.body.frame.lines) > win.body.height {
 		// TODO: We didn't know how many lines will the head of the window
 		// span. Can we do better?
@@ -198,6 +221,13 @@ func (win *Window) Flush() {
 	win.body.fill()
 
 	win.ui.screen.Show()
+}
+
+func (win *Window) height() int {
+	if win.nextWin == nil {
+		return win.ui.y + win.ui.height - win.y
+	}
+	return win.nextWin.y - win.y
 }
 
 type Text struct {

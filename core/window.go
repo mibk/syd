@@ -43,11 +43,6 @@ func (win *Window) Size() (w, h int) { return win.win.Size() }
 
 func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO: delete
 
-func (win *Window) Render() {
-	win.LoadText()
-	win.win.Flush()
-}
-
 func (win *Window) LoadText() {
 	win.win.Clear()
 	win.head.loadText()
