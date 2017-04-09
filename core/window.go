@@ -28,7 +28,7 @@ type Window struct {
 func NewWindow(ed *Editor, window *term.Window, con Content) *Window {
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
 	win := &Window{ed: ed, win: window, con: con, buf: buf}
-	win.head = newText(win, &BasicBuffer{[]rune(" Exit Del Put Undo Redo ")}, window.Head())
+	win.head = newText(win, &BasicBuffer{[]rune("\x00Exit New Del Put Undo Redo ")}, window.Head())
 	win.body = newText(win, buf, window.Body())
 	return win
 }
@@ -67,13 +67,29 @@ func (win *Window) execute(command string) {
 		go func() {
 			ui.Events <- ui.Quit
 		}()
+	case "New":
+		win.ed.NewWindow()
 	case "Del":
 		win.Close()
 	case "Put":
-		if win.filename != "" {
-			if err := win.saveFile(); err != nil {
-				panic(err)
+		if win.filename == "" {
+			var runes []rune
+			var p int64
+			for {
+				r := win.head.ReadRuneAt(p)
+				if r == 0 || r == EOF {
+					break
+				}
+				runes = append(runes, r)
+				p++
 			}
+			if len(runes) == 0 {
+				return
+			}
+			win.filename = string(runes)
+		}
+		if err := win.saveFile(); err != nil {
+			panic(err)
 		}
 	case "Undo":
 		win.Undo()
