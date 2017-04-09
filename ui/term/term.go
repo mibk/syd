@@ -235,7 +235,7 @@ func (win *Window) Clear() {
 	win.head.height = h - 1
 	win.head.clear()
 
-	win.body.width = win.width
+	win.body.width = win.width - 1
 	win.body.height = h
 	win.body.clear()
 }
