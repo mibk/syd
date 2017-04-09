@@ -59,7 +59,7 @@ func (t *UI) NewWindow() *Window {
 	}
 	w, h := t.Size()
 	win := &Window{
-		x: 1, y: 1, // For testing purposes.
+		y:     1, // For testing purposes.
 		width: w / 2,
 		ui:    t,
 		head:  head,
