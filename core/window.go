@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/mibk/syd/pkg/undo"
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 )
@@ -23,14 +22,6 @@ type Window struct {
 	buf  *UndoBuffer
 	head *Text
 	body *Text
-}
-
-func NewWindow(ed *Editor, window *term.Window, con Content) *Window {
-	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
-	win := &Window{ed: ed, win: window, con: con, buf: buf}
-	win.head = newText(win, &BasicBuffer{[]rune("\x00Exit New Del Put Undo Redo ")}, window.Head())
-	win.body = newText(win, buf, window.Body())
-	return win
 }
 
 func (win *Window) SetFilename(filename string) {

@@ -3,6 +3,7 @@ package core
 import (
 	"os"
 
+	"github.com/mibk/syd/pkg/undo"
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 	"github.com/mibk/syd/vi"
@@ -66,7 +67,11 @@ func (ed *Editor) NewWindowFile(filename string) error {
 }
 
 func (ed *Editor) newWindow(con Content) *Window {
-	win := NewWindow(ed, ed.ui.NewWindow(), con)
+	window := ed.ui.NewWindow()
+	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
+	win := &Window{ed: ed, win: window, con: con, buf: buf}
+	win.head = newText(win, &BasicBuffer{[]rune("\x00Exit New Del Put Undo Redo ")}, window.Head())
+	win.body = newText(win, buf, window.Body())
 	ed.wins = append(ed.wins, win)
 	return win
 }
