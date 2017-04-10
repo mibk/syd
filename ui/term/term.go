@@ -219,6 +219,8 @@ type Window struct {
 	head *Text
 	body *Text
 
+	dirty bool
+
 	nextWin *Window
 }
 
@@ -240,9 +242,15 @@ func (win *Window) Clear() {
 	win.body.clear()
 }
 
+func (win *Window) SetDirty(dirty bool) {
+	win.dirty = dirty
+}
+
 func (win *Window) Delete() {
 	win.ui.deleteWindow(win)
 }
+
+var dirtystyle = tcell.StyleDefault.Background(tcell.GetColor("#8888cc"))
 
 func (win *Window) flush() {
 	win.head.x = win.x + 1
@@ -254,7 +262,11 @@ func (win *Window) flush() {
 
 	y := 0
 	for ; y < h; y++ {
-		win.ui.screen.SetContent(win.x, win.y+y, ' ', nil, win.head.bgstyle)
+		bg := win.head.bgstyle
+		if y == 0 && win.dirty {
+			bg = dirtystyle
+		}
+		win.ui.screen.SetContent(win.x, win.y+y, ' ', nil, bg)
 	}
 	winh := win.height()
 	for ; y < winh; y++ {

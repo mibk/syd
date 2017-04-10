@@ -116,5 +116,7 @@ func (b *UndoBuffer) Delete(q0, q1 int64) {
 	}
 }
 
-func (b *UndoBuffer) Undo() { b.buf.Undo() }
-func (b *UndoBuffer) Redo() { b.buf.Redo() }
+func (b *UndoBuffer) Undo()       { b.buf.Undo() }
+func (b *UndoBuffer) Redo()       { b.buf.Redo() }
+func (b *UndoBuffer) Dirty() bool { return b.buf.Dirty() }
+func (b *UndoBuffer) Clean()      { b.buf.Clean() }

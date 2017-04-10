@@ -37,6 +37,7 @@ func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO:
 
 func (win *Window) LoadText() {
 	win.win.Clear()
+	win.win.SetDirty(win.buf.Dirty())
 	win.head.loadText()
 	win.body.loadText()
 }
@@ -82,6 +83,7 @@ func (win *Window) execute(command string) {
 		if err := win.saveFile(); err != nil {
 			panic(err)
 		}
+		win.buf.Clean()
 	case "Undo":
 		win.Undo()
 	case "Redo":
