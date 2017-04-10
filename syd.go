@@ -23,7 +23,7 @@ func main() {
 		ed.NewWindow()
 	} else {
 		for _, a := range os.Args[1:] {
-			if err := ed.NewWindowFile(a); err != nil {
+			if _, err := ed.NewWindowFile(a); err != nil {
 				panic(err)
 			}
 		}

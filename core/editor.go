@@ -48,22 +48,27 @@ func (ed *Editor) Main() {
 	}
 }
 
-func (ed *Editor) NewWindow() {
-	ed.newWindow(BytesContent([]byte{}))
+func (ed *Editor) NewWindow() *Window {
+	return ed.newWindow(BytesContent([]byte{}))
 }
 
-func (ed *Editor) NewWindowFile(filename string) error {
+func (ed *Editor) NewWindowFile(filename string) (*Window, error) {
 	f, err := os.Open(filename)
 	if err != nil {
-		return err
+		if os.IsNotExist(err) {
+			win := ed.NewWindow()
+			win.SetFilename(filename)
+			return win, nil
+		}
+		return nil, err
 	}
 	mm, err := Mmap(f)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	win := ed.newWindow(mm)
 	win.SetFilename(filename)
-	return nil
+	return win, nil
 }
 
 func (ed *Editor) newWindow(con Content) *Window {
