@@ -9,6 +9,7 @@ import (
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 
+	"github.com/atotto/clipboard"
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 )
@@ -264,6 +265,20 @@ func (t *Text) handleKeyEvent(ev key.Event) {
 	case ev.Rune == ui.KeyDown:
 		down(t)
 
+	case (ev.Rune == 'c' || ev.Rune == 'x') && ev.Modifiers&key.ModControl != 0:
+		err := clipboard.WriteAll(t.SelectionToString(t.Selected()))
+		if err != nil {
+			panic(err)
+		}
+		if ev.Rune == 'x' {
+			t.DeleteSel()
+		}
+	case ev.Rune == 'v' && ev.Modifiers&key.ModControl != 0:
+		s, err := clipboard.ReadAll()
+		if err != nil {
+			panic(err)
+		}
+		t.Insert(s)
 	default:
 		t.Insert(string(ev.Rune))
 	}
