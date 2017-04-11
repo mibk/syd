@@ -148,6 +148,13 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 			t.win.execute(string(cmd))
 			return
 		} else if ev.Button == mouse.ButtonRight {
+			q0, q1 := t.selectPath(q)
+			// TODO: Refactor this!
+			var path []rune
+			for i := q0; i < q1; i++ {
+				path = append(path, t.ReadRuneAt(i))
+			}
+			t.win.ed.NewWindowFile(string(path))
 			return
 		}
 
@@ -187,17 +194,25 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 }
 
 func (t *Text) dblclick(q int64) (q0, q1 int64) {
+	return t.spread(q, isAlphaNumeric)
+}
+
+func (t *Text) selectPath(q int64) (q0, q1 int64) {
+	return t.spread(q, isPath)
+}
+
+func (t *Text) spread(q int64, fn func(rune) bool) (q0, q1 int64) {
 	q0, q1 = q, q
 	for q0 > 0 {
 		r := t.ReadRuneAt(q0 - 1)
-		if !isAlphaNumeric(r) {
+		if !fn(r) {
 			break
 		}
 		q0--
 	}
 	for {
 		r := t.ReadRuneAt(q1)
-		if !isAlphaNumeric(r) {
+		if !fn(r) {
 			break
 		}
 		q1++
@@ -208,6 +223,8 @@ func (t *Text) dblclick(q int64) (q0, q1 int64) {
 func isAlphaNumeric(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
+
+func isPath(r rune) bool { return !unicode.IsSpace(r) }
 
 func (t *Text) handleKeyEvent(ev key.Event) {
 	switch {
