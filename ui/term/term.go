@@ -2,6 +2,8 @@ package term
 
 import (
 	"io"
+	"unicode"
+	"unicode/utf8"
 
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
@@ -397,13 +399,19 @@ func (t *Text) flush() {
 		for _, r := range l {
 			selStyle(p)
 			p++
-			if r == '\n' {
-				goto fill
-			}
 			w := 1
-			if r == '\t' {
+			switch {
+			case r == '\n':
+				goto fill
+			case r == '\t':
 				r = ' '
 				w = tabWidthForCol(x)
+			case r == 0:
+				// TODO: This is a workaround to print silently \0 that
+				// separates filename and commands in the head of the window.
+				r = ' '
+			case !unicode.IsPrint(r):
+				r = utf8.RuneError
 			}
 			for i := 0; i < w && x < t.width; i++ {
 				// TODO: Should the rest of the tab at the end of a
