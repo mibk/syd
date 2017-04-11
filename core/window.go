@@ -91,14 +91,10 @@ func (win *Window) execute(command string) {
 	default:
 		// TODO: Implement this using io.Reader; read directly
 		// from the buffer.
-		var selected []rune
 		q0, q1 := win.body.Selected()
-		for p := q0; p < q1; p++ {
-			r := win.body.ReadRuneAt(p)
-			selected = append(selected, r)
-		}
+		selected := win.body.SelectionToString(q0, q1)
 		var buf bytes.Buffer
-		rd := strings.NewReader(string(selected))
+		rd := strings.NewReader(selected)
 		cmd := exec.Command(command)
 		cmd.Stdin = rd
 		cmd.Stdout = &buf

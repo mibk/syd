@@ -60,6 +60,14 @@ func (t *Text) SetOrigin(org int64) { t.origin = org }
 
 func (t *Text) Selected() (q0, q1 int64) { return t.q0, t.q1 }
 
+func (t *Text) SelectionToString(q0, q1 int64) string {
+	s := make([]rune, 0, q1-q0)
+	for p := q0; p < q1; p++ {
+		s = append(s, t.ReadRuneAt(p))
+	}
+	return string(s)
+}
+
 func (t *Text) Select(q0, q1 int64) {
 	if q0 < 0 || q1 < q0 {
 		return
@@ -140,21 +148,12 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 	switch ev.Direction {
 	case mouse.DirPress:
 		if ev.Button == mouse.ButtonMiddle {
-			q0, q1 := t.dblclick(q)
-			var cmd []rune
-			for i := q0; i < q1; i++ {
-				cmd = append(cmd, t.ReadRuneAt(i))
-			}
-			t.win.execute(string(cmd))
+			cmd := t.SelectionToString(t.dblclick(q))
+			t.win.execute(cmd)
 			return
 		} else if ev.Button == mouse.ButtonRight {
-			q0, q1 := t.selectPath(q)
-			// TODO: Refactor this!
-			var path []rune
-			for i := q0; i < q1; i++ {
-				path = append(path, t.ReadRuneAt(i))
-			}
-			t.win.ed.NewWindowFile(string(path))
+			path := t.SelectionToString(t.selectPath(q))
+			t.win.ed.NewWindowFile(path)
 			return
 		}
 
