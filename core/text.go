@@ -252,6 +252,8 @@ func (t *Text) handleKeyEvent(ev key.Event) {
 			t.Select(q0, q1+1)
 		}
 		t.DeleteSel()
+	case ev.Rune == ui.KeyEscape:
+		t.DeleteSel()
 	case ev.Rune == ui.KeyLeft:
 		left(t)
 	case ev.Rune == ui.KeyRight:
