@@ -20,9 +20,9 @@ type UI struct {
 	width  int
 	height int
 
-	firstWin   *Window
+	firstCol   *Column
+	recentCol  *Column // create new windows here
 	activeText *Text   // will receive key events
-	grabbedWin *Window // index of the grabbed win or nil
 }
 
 func (t *UI) Init() error {
@@ -39,7 +39,7 @@ func (t *UI) Init() error {
 	// TODO: Just for testing purposes.
 	t.y = 1
 	w, h := t.Size()
-	t.width = w / 2
+	t.width = w - 1
 	t.height = h - 2
 
 	go t.translateEvents()
@@ -53,7 +53,101 @@ func (t *UI) Close() error {
 
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
+func (t *UI) Flush() {
+	col := t.firstCol
+	for col != nil {
+		col.flush()
+		col = col.nextCol
+	}
+	t.screen.Show()
+}
+
+// TODO: This is for temporary reasons. Remove it.
+func (t *UI) Push_Mouse_Event(ev mouse.Event) {
+	col := t.firstCol
+	for col != nil {
+		if int(ev.X) < col.x+col.width() {
+			col.handleMouseEvent(ev)
+			return
+		}
+	}
+	panic("column not found")
+}
+
+func (t *UI) Push_Key_Event(ev key.Event) {
+	t.activeText.keyEventHandler(ev)
+}
+
+func (t *UI) NewColumn() *Column {
+	col := &Column{ui: t}
+	if t.firstCol == nil {
+		t.firstCol = col
+	} else {
+		prev := t.lastCol()
+		col.x = prev.x + prev.width()/2
+		prev.nextCol = col
+	}
+	return col
+}
+
 func (t *UI) NewWindow() *Window {
+	if t.recentCol == nil {
+		t.recentCol = t.NewColumn()
+	}
+	return t.recentCol.newWindow()
+}
+
+func (t *UI) lastCol() *Column {
+	col := t.firstCol
+	if col == nil {
+		return nil
+	}
+	for col.nextCol != nil {
+		col = col.nextCol
+	}
+	return col
+}
+
+type Column struct {
+	ui *UI
+	x  int
+
+	firstWin   *Window
+	grabbedWin *Window // index of the grabbed win or nil
+
+	nextCol *Column
+}
+
+func (col *Column) handleMouseEvent(ev mouse.Event) {
+	y := int(ev.Y)
+	if col.grabbedWin != nil {
+		if ev.Direction == mouse.DirRelease {
+			col.moveGrabbedWin(y)
+		}
+		return
+	}
+	win := col.firstWin
+	for win != nil {
+		if y < win.y || y >= win.y+win.height() {
+			win = win.nextWin
+			continue
+		}
+		if y >= win.body.y {
+			win.body.click(ev)
+			col.ui.activeText = win.body
+		} else {
+			if int(ev.X) == win.x && ev.Direction == mouse.DirPress {
+				col.grabbedWin = win
+				break
+			}
+			win.tag.click(ev)
+			col.ui.activeText = win.tag
+		}
+		break
+	}
+}
+
+func (col *Column) newWindow() *Window {
 	tag := &Text{
 		frame: new(Frame),
 		bgstyle: tcell.StyleDefault.
@@ -69,35 +163,36 @@ func (t *UI) NewWindow() *Window {
 			Background(tcell.GetColor("#e0e090")),
 	}
 	win := &Window{
-		y:     t.y,
-		width: t.width,
-		ui:    t,
-		tag:   tag,
-		body:  body,
+		col:  col,
+		y:    col.ui.y,
+		tag:  tag,
+		body: body,
 	}
 	tag.win = win
 	body.win = win
 
-	if t.firstWin == nil {
-		t.activeText = body
-		t.firstWin = win
+	if col.firstWin == nil {
+		if col.ui.activeText == nil {
+			col.ui.activeText = body
+		}
+		col.firstWin = win
 	} else {
-		prev := t.lastWin()
+		prev := col.lastWin()
 		win.y = prev.y + prev.height()/2
 		prev.nextWin = win
 	}
 	return win
 }
 
-func (t *UI) deleteWindow(todel *Window) {
-	sentinel := &Window{nextWin: t.firstWin}
+func (col *Column) deleteWindow(todel *Window) {
+	sentinel := &Window{nextWin: col.firstWin}
 	win := sentinel
 	for win.nextWin != nil {
 		if win.nextWin == todel {
 			win.nextWin = todel.nextWin
-			t.firstWin = sentinel.nextWin
-			if t.firstWin != nil {
-				t.firstWin.y = t.y
+			col.firstWin = sentinel.nextWin
+			if col.firstWin != nil {
+				col.firstWin.y = col.ui.y
 			}
 			return
 		}
@@ -106,50 +201,26 @@ func (t *UI) deleteWindow(todel *Window) {
 	panic("window not found")
 }
 
-func (t *UI) Flush() {
-	win := t.firstWin
+var whitebg = tcell.StyleDefault.Background(tcell.ColorWhite)
+
+func (col *Column) flush() {
+	if col.firstWin == nil {
+		for x := col.x; x < col.x+col.width(); x++ {
+			for y := col.ui.y; y < col.ui.y+col.ui.height; y++ {
+				col.ui.screen.SetContent(x, y, ' ', nil, whitebg)
+			}
+		}
+		return
+	}
+	win := col.firstWin
 	for win != nil {
 		win.flush()
 		win = win.nextWin
 	}
 }
 
-// TODO: This is for temporary reasons. Remove it.
-func (t *UI) Push_Mouse_Event(ev mouse.Event) {
-	y := int(ev.Y)
-	if t.grabbedWin != nil {
-		if ev.Direction == mouse.DirRelease {
-			t.moveGrabbedWin(y)
-		}
-		return
-	}
-	win := t.firstWin
-	for win != nil {
-		if y < win.y || y >= win.y+win.height() {
-			win = win.nextWin
-			continue
-		}
-		if y >= win.body.y {
-			win.body.click(ev)
-			t.activeText = win.body
-		} else {
-			if int(ev.X) == win.x && ev.Direction == mouse.DirPress {
-				t.grabbedWin = win
-				break
-			}
-			win.tag.click(ev)
-			t.activeText = win.tag
-		}
-		break
-	}
-}
-
-func (t *UI) Push_Key_Event(ev key.Event) {
-	t.activeText.keyEventHandler(ev)
-}
-
-func (t *UI) lastWin() *Window {
-	win := t.firstWin
+func (col *Column) lastWin() *Window {
+	win := col.firstWin
 	if win == nil {
 		return nil
 	}
@@ -159,10 +230,10 @@ func (t *UI) lastWin() *Window {
 	return win
 }
 
-func (t *UI) moveGrabbedWin(y int) {
-	gw := t.grabbedWin
-	t.grabbedWin = nil
-	target := t.firstWin
+func (col *Column) moveGrabbedWin(y int) {
+	gw := col.grabbedWin
+	col.grabbedWin = nil
+	target := col.firstWin
 
 	if target.nextWin == nil {
 		// Cannot move anything if there's just one
@@ -185,17 +256,17 @@ func (t *UI) moveGrabbedWin(y int) {
 	}
 
 	if gw == target || (target.nextWin != nil && gw == target.nextWin) {
-		if gw == t.firstWin {
+		if gw == col.firstWin {
 			return
 		}
 	} else {
-		t.moveWin(gw, target)
+		col.moveWin(gw, target)
 	}
 	gw.y = y
 }
 
-func (t *UI) moveWin(win, after *Window) {
-	sentinel := &Window{nextWin: t.firstWin}
+func (col *Column) moveWin(win, after *Window) {
+	sentinel := &Window{nextWin: col.firstWin}
 	prev := sentinel
 	for prev.nextWin != nil {
 		if prev.nextWin == win {
@@ -203,8 +274,8 @@ func (t *UI) moveWin(win, after *Window) {
 			win.nextWin = after.nextWin
 			after.nextWin = win
 
-			t.firstWin = sentinel.nextWin
-			t.firstWin.y = t.y
+			col.firstWin = sentinel.nextWin
+			col.firstWin.y = col.ui.y
 			return
 		}
 		prev = prev.nextWin
@@ -212,11 +283,17 @@ func (t *UI) moveWin(win, after *Window) {
 	panic("window not found")
 }
 
-type Window struct {
-	ui *UI
+func (col *Column) width() int {
+	if col.nextCol == nil {
+		return col.ui.width - col.x
+	}
+	return col.nextCol.x - col.x
+}
 
-	width int
-	x, y  int
+type Window struct {
+	col *Column
+
+	x, y int
 
 	tag  *Text
 	body *Text
@@ -227,19 +304,20 @@ type Window struct {
 }
 
 func (win *Window) Size() (w, h int) {
-	return win.width, win.height()
+	return win.col.width(), win.height()
 }
 
 func (win *Window) Tag() *Text  { return win.tag }
 func (win *Window) Body() *Text { return win.body }
 
 func (win *Window) Clear() {
+	w := win.col.width()
 	h := win.height()
-	win.tag.width = win.width - 1
+	win.tag.width = w - 1
 	win.tag.height = h - 1
 	win.tag.clear()
 
-	win.body.width = win.width - 1
+	win.body.width = w - 1
 	win.body.height = h
 	win.body.clear()
 }
@@ -249,7 +327,7 @@ func (win *Window) SetDirty(dirty bool) {
 }
 
 func (win *Window) Delete() {
-	win.ui.deleteWindow(win)
+	win.col.deleteWindow(win)
 }
 
 var dirtystyle = tcell.StyleDefault.Background(tcell.GetColor("#8888cc"))
@@ -268,11 +346,11 @@ func (win *Window) flush() {
 		if y == 0 && win.dirty {
 			bg = dirtystyle
 		}
-		win.ui.screen.SetContent(win.x, win.y+y, ' ', nil, bg)
+		win.col.ui.screen.SetContent(win.x, win.y+y, ' ', nil, bg)
 	}
 	winh := win.height()
 	for ; y < winh; y++ {
-		win.ui.screen.SetContent(win.x, win.y+y, ' ', nil, win.body.bgstyle)
+		win.col.ui.screen.SetContent(win.x, win.y+y, ' ', nil, win.body.bgstyle)
 	}
 
 	win.body.height = winh - h
@@ -285,13 +363,11 @@ func (win *Window) flush() {
 	win.body.y = win.y + h
 	win.body.flush()
 	win.body.fill()
-
-	win.ui.screen.Show()
 }
 
 func (win *Window) height() int {
 	if win.nextWin == nil {
-		return win.ui.y + win.ui.height - win.y
+		return win.col.ui.y + win.col.ui.height - win.y
 	}
 	return win.nextWin.y - win.y
 }
@@ -416,7 +492,7 @@ func (t *Text) flush() {
 			for i := 0; i < w && x < t.width; i++ {
 				// TODO: Should the rest of the tab at the end of a
 				// line span the begining of the next line?
-				t.win.ui.screen.SetContent(t.x+x, t.y+y, r, nil, style)
+				t.win.col.ui.screen.SetContent(t.x+x, t.y+y, r, nil, style)
 				x++
 				if style == reverse {
 					style = t.bgstyle
@@ -426,7 +502,7 @@ func (t *Text) flush() {
 		selStyle(p)
 	fill:
 		for ; x < t.width; x++ {
-			t.win.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, style)
+			t.win.col.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, style)
 			if style == reverse {
 				style = t.bgstyle
 			}
@@ -439,7 +515,7 @@ func (t *Text) fill() {
 	bg := tcell.StyleDefault.Background(tcell.GetColor("#ffe0ff"))
 	for y := len(t.frame.lines); y < t.height; y++ {
 		for x := 0; x < t.width; x++ {
-			t.win.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, bg)
+			t.win.col.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, bg)
 		}
 	}
 }
