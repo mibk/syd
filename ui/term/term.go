@@ -303,10 +303,6 @@ type Window struct {
 	nextWin *Window
 }
 
-func (win *Window) Size() (w, h int) {
-	return win.col.width(), win.height()
-}
-
 func (win *Window) Tag() *Text  { return win.tag }
 func (win *Window) Body() *Text { return win.body }
 
@@ -378,7 +374,8 @@ type Text struct {
 
 	width, height int
 	x, y          int
-	cur           struct {
+
+	cur struct {
 		p0, p1 int // char position
 		x, y   int // current position
 	}
@@ -389,6 +386,11 @@ type Text struct {
 
 	mouseEventHandler ui.MouseEventHandler
 	keyEventHandler   ui.KeyEventHandler
+}
+
+// TODO: Probably remove.
+func (t *Text) Size() (w, h int) {
+	return t.width, t.height
 }
 
 func (t *Text) click(ev mouse.Event) {

@@ -30,9 +30,6 @@ func (win *Window) SetFilename(filename string) {
 	// TODO: Move the cursor to the end of the line.
 }
 
-// Size returns the size of win.
-func (win *Window) Size() (w, h int) { return win.win.Size() }
-
 func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO: delete
 
 func (win *Window) LoadText() {

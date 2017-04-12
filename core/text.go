@@ -326,7 +326,7 @@ func findQ(t *Text, line int) int64 {
 		t.loadText()
 		line = 0
 	} else if line > t.text.Frame().Lines()-1 {
-		_, h := t.win.Size()
+		_, h := t.text.Size()
 		if t.text.Frame().Lines() == h {
 			i := line - t.text.Frame().Lines() + 1
 			oldOrg := t.Origin()
