@@ -20,13 +20,13 @@ type Window struct {
 	con      Content
 
 	buf  *UndoBuffer
-	head *Text
+	tag  *Text
 	body *Text
 }
 
 func (win *Window) SetFilename(filename string) {
 	win.filename = filename
-	win.head.buf.Insert(0, filename)
+	win.tag.buf.Insert(0, filename)
 	// TODO: Move the cursor to the end of the line.
 }
 
@@ -38,7 +38,7 @@ func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO:
 func (win *Window) LoadText() {
 	win.win.Clear()
 	win.win.SetDirty(win.buf.Dirty())
-	win.head.loadText()
+	win.tag.loadText()
 	win.body.loadText()
 }
 
@@ -68,7 +68,7 @@ func (win *Window) execute(command string) {
 			var runes []rune
 			var p int64
 			for {
-				r := win.head.ReadRuneAt(p)
+				r := win.tag.ReadRuneAt(p)
 				if r == 0 || r == EOF {
 					break
 				}

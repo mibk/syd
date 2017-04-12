@@ -75,7 +75,7 @@ func (ed *Editor) newWindow(con Content) *Window {
 	window := ed.ui.NewWindow()
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
 	win := &Window{ed: ed, win: window, con: con, buf: buf}
-	win.head = newText(win, &BasicBuffer{[]rune("\x00Exit New Del Put Undo Redo ")}, window.Head())
+	win.tag = newText(win, &BasicBuffer{[]rune("\x00Exit New Del Put Undo Redo ")}, window.Tag())
 	win.body = newText(win, buf, window.Body())
 	ed.wins = append(ed.wins, win)
 	return win

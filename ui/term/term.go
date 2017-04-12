@@ -54,7 +54,7 @@ func (t *UI) Close() error {
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
 func (t *UI) NewWindow() *Window {
-	head := &Text{
+	tag := &Text{
 		frame: new(Frame),
 		bgstyle: tcell.StyleDefault.
 			Background(tcell.GetColor("#eaffff")),
@@ -72,10 +72,10 @@ func (t *UI) NewWindow() *Window {
 		y:     t.y,
 		width: t.width,
 		ui:    t,
-		head:  head,
+		tag:   tag,
 		body:  body,
 	}
-	head.win = win
+	tag.win = win
 	body.win = win
 
 	if t.firstWin == nil {
@@ -137,8 +137,8 @@ func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 				t.grabbedWin = win
 				break
 			}
-			win.head.click(ev)
-			t.activeText = win.head
+			win.tag.click(ev)
+			t.activeText = win.tag
 		}
 		break
 	}
@@ -218,7 +218,7 @@ type Window struct {
 	width int
 	x, y  int
 
-	head *Text
+	tag  *Text
 	body *Text
 
 	dirty bool
@@ -230,14 +230,14 @@ func (win *Window) Size() (w, h int) {
 	return win.width, win.height()
 }
 
-func (win *Window) Head() *Text { return win.head }
+func (win *Window) Tag() *Text  { return win.tag }
 func (win *Window) Body() *Text { return win.body }
 
 func (win *Window) Clear() {
 	h := win.height()
-	win.head.width = win.width - 1
-	win.head.height = h - 1
-	win.head.clear()
+	win.tag.width = win.width - 1
+	win.tag.height = h - 1
+	win.tag.clear()
 
 	win.body.width = win.width - 1
 	win.body.height = h
@@ -255,16 +255,16 @@ func (win *Window) Delete() {
 var dirtystyle = tcell.StyleDefault.Background(tcell.GetColor("#8888cc"))
 
 func (win *Window) flush() {
-	win.head.x = win.x + 1
-	win.head.y = win.y
-	win.head.flush()
+	win.tag.x = win.x + 1
+	win.tag.y = win.y
+	win.tag.flush()
 
-	h := len(win.head.frame.lines)
-	win.head.height = h
+	h := len(win.tag.frame.lines)
+	win.tag.height = h
 
 	y := 0
 	for ; y < h; y++ {
-		bg := win.head.bgstyle
+		bg := win.tag.bgstyle
 		if y == 0 && win.dirty {
 			bg = dirtystyle
 		}
@@ -277,7 +277,7 @@ func (win *Window) flush() {
 
 	win.body.height = winh - h
 	if len(win.body.frame.lines) > win.body.height {
-		// TODO: We didn't know how many lines will the head of the window
+		// TODO: We didn't know how many lines will the tag of the window
 		// span. Can we do better?
 		win.body.frame.lines = win.body.frame.lines[:win.body.height]
 	}
@@ -408,7 +408,7 @@ func (t *Text) flush() {
 				w = tabWidthForCol(x)
 			case r == 0:
 				// TODO: This is a workaround to print silently \0 that
-				// separates filename and commands in the head of the window.
+				// separates filename and commands in the tag of the window.
 				r = ' '
 			case !unicode.IsPrint(r):
 				r = utf8.RuneError
