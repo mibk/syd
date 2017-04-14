@@ -70,6 +70,7 @@ func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 			col.handleMouseEvent(ev)
 			return
 		}
+		col = col.nextCol
 	}
 	panic("column not found")
 }
