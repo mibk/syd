@@ -56,6 +56,8 @@ func (win *Window) execute(command string) {
 		go func() {
 			ui.Events <- ui.Quit
 		}()
+	case "Newcol":
+		win.ed.NewColumn()
 	case "New":
 		win.ed.NewWindow()
 	case "Del":
