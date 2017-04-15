@@ -331,7 +331,10 @@ func (win *Window) Delete() {
 	win.col.deleteWindow(win)
 }
 
-var dirtystyle = tcell.StyleDefault.Background(tcell.GetColor("#8888cc"))
+var (
+	dirtystyle  = tcell.StyleDefault.Background(tcell.GetColor("#8888cc"))
+	borderstyle = tcell.StyleDefault.Background(tcell.GetColor("#83835c"))
+)
 
 func (win *Window) flush() {
 	win.tag.x = win.col.x + 1
@@ -351,7 +354,7 @@ func (win *Window) flush() {
 	}
 	winh := win.height()
 	for ; y < winh; y++ {
-		win.col.ui.screen.SetContent(win.col.x, win.y+y, ' ', nil, win.body.bgstyle)
+		win.col.ui.screen.SetContent(win.col.x, win.y+y, ' ', nil, borderstyle)
 	}
 
 	win.body.height = winh - h
