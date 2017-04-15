@@ -332,7 +332,7 @@ func (win *Window) Delete() {
 }
 
 var (
-	dirtystyle  = tcell.StyleDefault.Background(tcell.GetColor("#8888cc"))
+	dirtystyle  = tcell.StyleDefault.Background(tcell.GetColor("#e5083c"))
 	borderstyle = tcell.StyleDefault.Background(tcell.GetColor("#83835c"))
 )
 
