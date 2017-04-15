@@ -12,6 +12,20 @@ import (
 	"github.com/mibk/syd/ui"
 )
 
+var (
+	whitebg = tcell.StyleDefault.Background(tcell.ColorWhite)
+
+	dirtystyle  = tcell.StyleDefault.Background(tcell.GetColor("#e5083c"))
+	borderstyle = tcell.StyleDefault.Background(tcell.GetColor("#83835c"))
+
+	tagbg  = tcell.StyleDefault.Background(tcell.GetColor("#eaffff"))
+	taghl  = tcell.StyleDefault.Background(tcell.GetColor("#90e0e0"))
+	bodybg = tcell.StyleDefault.Background(tcell.GetColor("#ffffea"))
+	bodyhl = tcell.StyleDefault.Background(tcell.GetColor("#e0e090"))
+
+	testbg = tcell.StyleDefault.Background(tcell.GetColor("#ffe0ff"))
+)
+
 type UI struct {
 	screen        tcell.Screen
 	wasBtnPressed bool
@@ -149,18 +163,14 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 
 func (col *Column) newWindow() *Window {
 	tag := &Text{
-		frame: new(Frame),
-		bgstyle: tcell.StyleDefault.
-			Background(tcell.GetColor("#eaffff")),
-		hlstyle: tcell.StyleDefault.
-			Background(tcell.GetColor("#90e0e0")),
+		frame:   new(Frame),
+		bgstyle: tagbg,
+		hlstyle: taghl,
 	}
 	body := &Text{
-		frame: new(Frame),
-		bgstyle: tcell.StyleDefault.
-			Background(tcell.GetColor("#ffffea")),
-		hlstyle: tcell.StyleDefault.
-			Background(tcell.GetColor("#e0e090")),
+		frame:   new(Frame),
+		bgstyle: bodybg,
+		hlstyle: bodyhl,
 	}
 	win := &Window{
 		col:  col,
@@ -200,8 +210,6 @@ func (col *Column) deleteWindow(todel *Window) {
 	}
 	panic("window not found")
 }
-
-var whitebg = tcell.StyleDefault.Background(tcell.ColorWhite)
 
 func (col *Column) flush() {
 	if col.firstWin == nil {
@@ -335,11 +343,6 @@ func (win *Window) SetDirty(dirty bool) {
 func (win *Window) Delete() {
 	win.col.deleteWindow(win)
 }
-
-var (
-	dirtystyle  = tcell.StyleDefault.Background(tcell.GetColor("#e5083c"))
-	borderstyle = tcell.StyleDefault.Background(tcell.GetColor("#83835c"))
-)
 
 func (win *Window) flush() {
 	winy := win.y + win.col.y()
@@ -528,7 +531,7 @@ func (t *Text) flush() {
 
 func (t *Text) fill() {
 	// TODO: Using this bg color just for testing purposes.
-	bg := tcell.StyleDefault.Background(tcell.GetColor("#ffe0ff"))
+	bg := testbg
 	for y := len(t.frame.lines); y < t.height; y++ {
 		for x := 0; x < t.width; x++ {
 			t.win.col.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, bg)
