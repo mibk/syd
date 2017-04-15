@@ -34,9 +34,11 @@ type UI struct {
 	width  int
 	height int
 
-	firstCol   *Column
-	recentCol  *Column // create new windows here
-	grabbedWin *Window // index of the grabbed win or nil
+	firstCol  *Column
+	recentCol *Column // create new windows here
+
+	grabbedCol *Column // grabbed col or nil
+	grabbedWin *Window // grabbed win or nil
 	activeText *Text   // will receive key events
 }
 
@@ -124,6 +126,55 @@ func (t *UI) lastCol() *Column {
 	return col
 }
 
+func (t *UI) moveGrabbedCol(x int) {
+	gc := t.grabbedCol
+	t.grabbedCol = nil
+
+	// TODO: If there are no columns.
+
+	target := t.firstCol
+	for target != nil {
+		if x >= target.x && x < target.x+target.width() {
+			break
+		}
+		target = target.nextCol
+	}
+
+	if x == target.x {
+		// TODO: Adjust position. See moveGrabbedWin.
+		return
+	}
+
+	if gc == target || (target.nextCol != nil && gc == target.nextCol) {
+		if gc == t.firstCol {
+			return
+		}
+	} else {
+		t.removeCol(gc)
+		gc.nextCol = target.nextCol
+		target.nextCol = gc
+	}
+	gc.x = x
+}
+
+func (t *UI) removeCol(col *Column) {
+	sentinel := &Column{nextCol: t.firstCol}
+	prev := sentinel
+	for prev.nextCol != nil {
+		if prev.nextCol == col {
+			prev.nextCol = col.nextCol
+			col.nextCol = nil
+			t.firstCol = sentinel.nextCol
+			if t.firstCol != nil {
+				t.firstCol.x = 0
+			}
+			return
+		}
+		prev = prev.nextCol
+	}
+	panic("column not found")
+}
+
 type Column struct {
 	ui *UI
 	x  int
@@ -133,13 +184,25 @@ type Column struct {
 }
 
 func (col *Column) handleMouseEvent(ev mouse.Event) {
-	y := int(ev.Y)
-	if col.ui.grabbedWin != nil {
+	x, y := int(ev.X), int(ev.Y)
+
+	if col.ui.grabbedCol != nil {
+		if ev.Direction == mouse.DirRelease {
+			col.ui.moveGrabbedCol(x)
+		}
+		return
+	} else if col.ui.grabbedWin != nil {
 		if ev.Direction == mouse.DirRelease {
 			col.moveGrabbedWin(y - col.y())
 		}
 		return
 	}
+
+	if ev.Direction == mouse.DirPress && x == col.x && y == col.ui.y {
+		col.ui.grabbedCol = col
+		return
+	}
+
 	win := col.firstWin
 	for win != nil {
 		if y < win.y || y >= win.y+win.height() {
@@ -150,7 +213,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 			win.body.click(ev)
 			col.ui.activeText = win.body
 		} else {
-			if ev.Direction == mouse.DirPress && int(ev.X) == win.col.x && y == win.tag.y {
+			if ev.Direction == mouse.DirPress && x == win.col.x && y == win.tag.y {
 				col.ui.grabbedWin = win
 				break
 			}
@@ -212,6 +275,10 @@ func (col *Column) deleteWindow(todel *Window) {
 }
 
 func (col *Column) flush() {
+	col.ui.screen.SetContent(col.x, col.ui.y, ' ', nil, testbg)
+	for x := col.x + 1; x < col.x+col.width(); x++ {
+		col.ui.screen.SetContent(x, col.ui.y, ' ', nil, tagbg)
+	}
 	if col.firstWin == nil {
 		for x := col.x; x < col.x+col.width(); x++ {
 			coly, colh := col.y(), col.height()
@@ -305,7 +372,7 @@ func (col *Column) width() int {
 }
 
 // Column's content y and height.
-func (col *Column) y() int      { return col.ui.y + 2 }
+func (col *Column) y() int      { return col.ui.y + 1 } // TODO: Replace 1 with the number of tag lines.
 func (col *Column) height() int { return col.ui.height - col.y() }
 
 type Window struct {
