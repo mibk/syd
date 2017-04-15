@@ -136,7 +136,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 			win.body.click(ev)
 			col.ui.activeText = win.body
 		} else {
-			if int(ev.X) == win.col.x && ev.Direction == mouse.DirPress {
+			if ev.Direction == mouse.DirPress && int(ev.X) == win.col.x && y == win.tag.y {
 				col.ui.grabbedWin = win
 				break
 			}
