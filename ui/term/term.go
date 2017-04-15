@@ -122,7 +122,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 	y := int(ev.Y)
 	if col.ui.grabbedWin != nil {
 		if ev.Direction == mouse.DirRelease {
-			col.moveGrabbedWin(y)
+			col.moveGrabbedWin(y - col.y())
 		}
 		return
 	}
@@ -164,7 +164,7 @@ func (col *Column) newWindow() *Window {
 	}
 	win := &Window{
 		col:  col,
-		y:    col.ui.y,
+		y:    0,
 		tag:  tag,
 		body: body,
 	}
@@ -192,7 +192,7 @@ func (col *Column) deleteWindow(todel *Window) {
 			win.nextWin = todel.nextWin
 			col.firstWin = sentinel.nextWin
 			if col.firstWin != nil {
-				col.firstWin.y = col.ui.y
+				col.firstWin.y = 0
 			}
 			return
 		}
@@ -206,7 +206,8 @@ var whitebg = tcell.StyleDefault.Background(tcell.ColorWhite)
 func (col *Column) flush() {
 	if col.firstWin == nil {
 		for x := col.x; x < col.x+col.width(); x++ {
-			for y := col.ui.y; y < col.ui.y+col.ui.height; y++ {
+			coly, colh := col.y(), col.height()
+			for y := coly; y < coly+colh; y++ {
 				col.ui.screen.SetContent(x, y, ' ', nil, whitebg)
 			}
 		}
@@ -239,7 +240,7 @@ func (col *Column) moveGrabbedWin(y int) {
 		gw.col.removeWin(gw)
 		col.firstWin = gw
 		gw.col = col
-		gw.y = col.ui.y
+		gw.y = 0
 		return
 	}
 
@@ -279,7 +280,7 @@ func (col *Column) removeWin(win *Window) {
 			win.nextWin = nil
 			col.firstWin = sentinel.nextWin
 			if col.firstWin != nil {
-				col.firstWin.y = col.ui.y
+				col.firstWin.y = 0
 			}
 			return
 		}
@@ -294,6 +295,10 @@ func (col *Column) width() int {
 	}
 	return col.nextCol.x - col.x
 }
+
+// Column's content y and height.
+func (col *Column) y() int      { return col.ui.y + 2 }
+func (col *Column) height() int { return col.ui.height - col.y() }
 
 type Window struct {
 	col *Column
@@ -337,8 +342,9 @@ var (
 )
 
 func (win *Window) flush() {
+	winy := win.y + win.col.y()
 	win.tag.x = win.col.x + 1
-	win.tag.y = win.y
+	win.tag.y = winy
 	win.tag.flush()
 
 	h := len(win.tag.frame.lines)
@@ -350,11 +356,11 @@ func (win *Window) flush() {
 		if y == 0 && win.dirty {
 			bg = dirtystyle
 		}
-		win.col.ui.screen.SetContent(win.col.x, win.y+y, ' ', nil, bg)
+		win.col.ui.screen.SetContent(win.col.x, winy+y, ' ', nil, bg)
 	}
 	winh := win.height()
 	for ; y < winh; y++ {
-		win.col.ui.screen.SetContent(win.col.x, win.y+y, ' ', nil, borderstyle)
+		win.col.ui.screen.SetContent(win.col.x, winy+y, ' ', nil, borderstyle)
 	}
 
 	win.body.height = winh - h
@@ -364,14 +370,14 @@ func (win *Window) flush() {
 		win.body.frame.lines = win.body.frame.lines[:win.body.height]
 	}
 	win.body.x = win.col.x + 1
-	win.body.y = win.y + h
+	win.body.y = winy + h
 	win.body.flush()
 	win.body.fill()
 }
 
 func (win *Window) height() int {
 	if win.nextWin == nil {
-		return win.col.ui.y + win.col.ui.height - win.y
+		return win.col.height() - win.y
 	}
 	return win.nextWin.y - win.y
 }
