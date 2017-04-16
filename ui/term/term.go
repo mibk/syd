@@ -134,6 +134,10 @@ func (t *UI) moveGrabbedCol(x int) {
 		}
 		target = target.nextCol
 	}
+	if target == nil {
+		// Nothing to do.
+		return
+	}
 
 	if x == target.x {
 		// TODO: Adjust position. See moveGrabbedWin.
@@ -297,9 +301,8 @@ func (col *Column) lastWin() *Window {
 func (col *Column) moveGrabbedWin(y int) {
 	gw := col.ui.grabbedWin
 	col.ui.grabbedWin = nil
-	target := col.firstWin
 
-	if target == nil {
+	if col.firstWin == nil {
 		col.winMovedHandler(gw, gw.col)
 		gw.col.removeWin(gw)
 		col.firstWin = gw
@@ -308,11 +311,13 @@ func (col *Column) moveGrabbedWin(y int) {
 		return
 	}
 
-	for target != nil {
-		if y >= target.y && y < target.y+target.height() {
-			break
-		}
+	target := col.firstWin
+	for y < target.y || y >= target.y+target.height() {
 		target = target.nextWin
+		if target == nil {
+			// Nothing to do.
+			return
+		}
 	}
 
 	if y == target.y {
