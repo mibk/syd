@@ -154,7 +154,7 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 			return
 		} else if ev.Button == mouse.ButtonRight {
 			path := t.SelectionToString(t.selectPath(q))
-			t.win.ed.NewWindowFile(path)
+			t.win.col.NewWindowFile(path)
 			return
 		}
 

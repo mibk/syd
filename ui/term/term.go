@@ -34,8 +34,7 @@ type UI struct {
 	width  int
 	height int
 
-	firstCol  *Column
-	recentCol *Column // create new windows here
+	firstCol *Column
 
 	grabbedCol *Column // grabbed col or nil
 	grabbedWin *Window // grabbed win or nil
@@ -106,13 +105,6 @@ func (t *UI) NewColumn() *Column {
 		prev.nextCol = col
 	}
 	return col
-}
-
-func (t *UI) NewWindow() *Window {
-	if t.recentCol == nil {
-		t.recentCol = t.NewColumn()
-	}
-	return t.recentCol.newWindow()
 }
 
 func (t *UI) lastCol() *Column {
@@ -224,7 +216,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 	}
 }
 
-func (col *Column) newWindow() *Window {
+func (col *Column) NewWindow() *Window {
 	tag := &Text{
 		frame:   new(Frame),
 		bgstyle: tagbg,

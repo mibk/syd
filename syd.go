@@ -19,11 +19,12 @@ func main() {
 	defer ui.Close()
 
 	ed := core.NewEditor(ui)
+	col := ed.NewColumn()
 	if len(os.Args) == 1 {
-		ed.NewWindow()
+		col.NewWindow()
 	} else {
 		for _, a := range os.Args[1:] {
-			if _, err := ed.NewWindowFile(a); err != nil {
+			if _, err := col.NewWindowFile(a); err != nil {
 				panic(err)
 			}
 		}

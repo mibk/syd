@@ -17,7 +17,7 @@ type Editor struct {
 	vi         *vi.Parser
 	shouldQuit bool
 
-	wins []*Window
+	cols []*Column
 	mode int
 }
 
@@ -30,8 +30,8 @@ func NewEditor(u *term.UI) *Editor {
 
 func (ed *Editor) Main() {
 	for !ed.shouldQuit {
-		for _, win := range ed.wins {
-			win.LoadText()
+		for _, col := range ed.cols {
+			col.Refresh()
 		}
 		ed.ui.Flush()
 		ev := <-ui.Events
@@ -48,19 +48,43 @@ func (ed *Editor) Main() {
 	}
 }
 
-func (ed *Editor) NewColumn() {
-	ed.ui.NewColumn()
+func (ed *Editor) NewColumn() *Column {
+	col := &Column{
+		ed:  ed,
+		col: ed.ui.NewColumn(),
+	}
+	ed.cols = append(ed.cols, col)
+	return col
 }
 
-func (ed *Editor) NewWindow() *Window {
-	return ed.newWindow(BytesContent([]byte{}))
+func (ed *Editor) Close() error {
+	for _, col := range ed.cols {
+		col.Close()
+	}
+	return nil
 }
 
-func (ed *Editor) NewWindowFile(filename string) (*Window, error) {
+type Column struct {
+	ed   *Editor
+	wins []*Window
+	col  *term.Column
+}
+
+func (col *Column) Refresh() {
+	for _, win := range col.wins {
+		win.LoadText()
+	}
+}
+
+func (col *Column) NewWindow() *Window {
+	return col.newWindow(BytesContent([]byte{}))
+}
+
+func (col *Column) NewWindowFile(filename string) (*Window, error) {
 	f, err := os.Open(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
-			win := ed.NewWindow()
+			win := col.NewWindow()
 			win.SetFilename(filename)
 			return win, nil
 		}
@@ -70,27 +94,27 @@ func (ed *Editor) NewWindowFile(filename string) (*Window, error) {
 	if err != nil {
 		return nil, err
 	}
-	win := ed.newWindow(mm)
+	win := col.newWindow(mm)
 	win.SetFilename(filename)
 	return win, nil
 }
 
-func (ed *Editor) newWindow(con Content) *Window {
-	window := ed.ui.NewWindow()
+func (col *Column) newWindow(con Content) *Window {
+	window := col.col.NewWindow()
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
-	win := &Window{ed: ed, win: window, con: con, buf: buf}
+	win := &Window{col: col, win: window, con: con, buf: buf}
 	win.tag = newText(win, &BasicBuffer{[]rune("\x00Exit Newcol New Del Put Undo Redo ")}, window.Tag())
 	win.body = newText(win, buf, window.Body())
-	ed.wins = append(ed.wins, win)
+	col.wins = append(col.wins, win)
 	return win
 }
 
-func (ed *Editor) deleteWindow(todel *Window) {
-	for i, win := range ed.wins {
+func (col *Column) deleteWindow(todel *Window) {
+	for i, win := range col.wins {
 		if win == todel {
-			ed.wins = append(ed.wins[:i], ed.wins[i+1:]...)
-			if len(ed.wins) == 0 {
-				ed.shouldQuit = true
+			col.wins = append(col.wins[:i], col.wins[i+1:]...)
+			if len(col.wins) == 0 {
+				col.ed.shouldQuit = true
 			}
 			return
 		}
@@ -98,8 +122,8 @@ func (ed *Editor) deleteWindow(todel *Window) {
 	panic("window not found")
 }
 
-func (ed *Editor) Close() error {
-	for _, win := range ed.wins {
+func (col *Column) Close() error {
+	for _, win := range col.wins {
 		// TODO: Check errors.
 		win.Close()
 	}

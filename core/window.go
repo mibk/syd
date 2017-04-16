@@ -14,7 +14,7 @@ import (
 const EOF = utf8.MaxRune + 1
 
 type Window struct {
-	ed       *Editor
+	col      *Column
 	filename string
 	win      *term.Window
 	con      Content
@@ -44,7 +44,7 @@ func (win *Window) Redo() { win.buf.Redo() }
 
 func (win *Window) Close() error {
 	win.win.Delete()
-	win.ed.deleteWindow(win)
+	win.col.deleteWindow(win)
 	return win.con.Close()
 }
 
@@ -57,9 +57,9 @@ func (win *Window) execute(command string) {
 			ui.Events <- ui.Quit
 		}()
 	case "Newcol":
-		win.ed.NewColumn()
+		win.col.ed.NewColumn()
 	case "New":
-		win.ed.NewWindow()
+		win.col.NewWindow()
 	case "Del":
 		win.Close()
 	case "Put":
