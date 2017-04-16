@@ -262,23 +262,6 @@ func (col *Column) Delete() {
 	col.ui.removeCol(col)
 }
 
-func (col *Column) deleteWindow(todel *Window) {
-	sentinel := &Window{nextWin: col.firstWin}
-	win := sentinel
-	for win.nextWin != nil {
-		if win.nextWin == todel {
-			win.nextWin = todel.nextWin
-			col.firstWin = sentinel.nextWin
-			if col.firstWin != nil {
-				col.firstWin.y = 0
-			}
-			return
-		}
-		win = win.nextWin
-	}
-	panic("window not found")
-}
-
 func (col *Column) flush() {
 	col.ui.screen.SetContent(col.x, col.ui.y, ' ', nil, testbg)
 	for x := col.x + 1; x < col.x+col.width(); x++ {
@@ -415,7 +398,7 @@ func (win *Window) SetDirty(dirty bool) {
 }
 
 func (win *Window) Delete() {
-	win.col.deleteWindow(win)
+	win.col.removeWin(win)
 }
 
 func (win *Window) flush() {
