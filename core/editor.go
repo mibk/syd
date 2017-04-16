@@ -54,6 +54,15 @@ func (ed *Editor) NewColumn() *Column {
 		col: ed.ui.NewColumn(),
 	}
 	ed.cols = append(ed.cols, col)
+	col.col.OnWindowMoved(func(win *term.Window, from *term.Column) {
+		if from == col.col {
+			return
+		}
+		fromCol := ed.findColumn(from)
+		ww := fromCol.removeWindow(win)
+		ww.col = col
+		col.wins = append(col.wins, ww)
+	})
 	return col
 }
 
@@ -62,6 +71,15 @@ func (ed *Editor) Close() error {
 		col.Close()
 	}
 	return nil
+}
+
+func (ed *Editor) findColumn(tofind *term.Column) *Column {
+	for _, col := range ed.cols {
+		if col.col == tofind {
+			return col
+		}
+	}
+	panic("column not found")
 }
 
 type Column struct {
@@ -117,6 +135,16 @@ func (col *Column) deleteWindow(todel *Window) {
 				col.ed.shouldQuit = true
 			}
 			return
+		}
+	}
+	panic("window not found")
+}
+
+func (col *Column) removeWindow(todel *term.Window) *Window {
+	for i, win := range col.wins {
+		if win.win == todel {
+			col.wins = append(col.wins[:i], col.wins[i+1:]...)
+			return win
 		}
 	}
 	panic("window not found")

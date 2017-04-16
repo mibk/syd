@@ -26,6 +26,9 @@ var (
 	testbg = tcell.StyleDefault.Background(tcell.GetColor("#ffe0ff"))
 )
 
+// TODO: Move to package ui.
+type WindowMovedHandler func(win *Window, from *Column)
+
 type UI struct {
 	screen        tcell.Screen
 	wasBtnPressed bool
@@ -171,8 +174,14 @@ type Column struct {
 	ui *UI
 	x  int
 
+	winMovedHandler WindowMovedHandler
+
 	firstWin *Window
 	nextCol  *Column
+}
+
+func (col *Column) OnWindowMoved(h WindowMovedHandler) {
+	col.winMovedHandler = h
 }
 
 func (col *Column) handleMouseEvent(ev mouse.Event) {
@@ -304,6 +313,7 @@ func (col *Column) moveGrabbedWin(y int) {
 	target := col.firstWin
 
 	if target == nil {
+		col.winMovedHandler(gw, gw.col)
 		gw.col.removeWin(gw)
 		col.firstWin = gw
 		gw.col = col
@@ -330,6 +340,7 @@ func (col *Column) moveGrabbedWin(y int) {
 			return
 		}
 	} else {
+		col.winMovedHandler(gw, gw.col)
 		gw.col.removeWin(gw)
 		gw.col = col
 		gw.nextWin = target.nextWin
