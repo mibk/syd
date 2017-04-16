@@ -258,6 +258,10 @@ func (col *Column) NewWindow() *Window {
 	return win
 }
 
+func (col *Column) Delete() {
+	col.ui.removeCol(col)
+}
+
 func (col *Column) deleteWindow(todel *Window) {
 	sentinel := &Window{nextWin: col.firstWin}
 	win := sentinel

@@ -58,6 +58,8 @@ func (win *Window) execute(command string) {
 		}()
 	case "Newcol":
 		win.col.ed.NewColumn()
+	case "Delcol":
+		win.col.Close()
 	case "New":
 		win.col.NewWindow()
 	case "Del":

@@ -82,6 +82,16 @@ func (ed *Editor) findColumn(tofind *term.Column) *Column {
 	panic("column not found")
 }
 
+func (ed *Editor) deleteColumn(todel *Column) {
+	for i, col := range ed.cols {
+		if col == todel {
+			ed.cols = append(ed.cols[:i], ed.cols[i+1:]...)
+			return
+		}
+	}
+	panic("column not found")
+}
+
 type Column struct {
 	ed   *Editor
 	wins []*Window
@@ -121,7 +131,7 @@ func (col *Column) newWindow(con Content) *Window {
 	window := col.col.NewWindow()
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
 	win := &Window{col: col, win: window, con: con, buf: buf}
-	win.tag = newText(win, &BasicBuffer{[]rune("\x00Exit Newcol New Del Put Undo Redo ")}, window.Tag())
+	win.tag = newText(win, &BasicBuffer{[]rune("\x00Exit Newcol Delcol New Del Put Undo Redo ")}, window.Tag())
 	win.body = newText(win, buf, window.Body())
 	col.wins = append(col.wins, win)
 	return win
@@ -131,9 +141,14 @@ func (col *Column) deleteWindow(todel *Window) {
 	for i, win := range col.wins {
 		if win == todel {
 			col.wins = append(col.wins[:i], col.wins[i+1:]...)
-			if len(col.wins) == 0 {
-				col.ed.shouldQuit = true
+			// TODO: Once columns and editor tags are implemented,
+			// remove this.
+			for _, col := range col.ed.cols {
+				if len(col.wins) > 0 {
+					return
+				}
 			}
+			col.ed.shouldQuit = true
 			return
 		}
 	}
@@ -155,5 +170,7 @@ func (col *Column) Close() error {
 		// TODO: Check errors.
 		win.Close()
 	}
+	col.col.Delete()
+	col.ed.deleteColumn(col)
 	return nil
 }
