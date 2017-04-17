@@ -104,7 +104,7 @@ func (t *UI) NewColumn() *Column {
 		t.firstCol = col
 	} else {
 		prev := t.lastCol()
-		col.x = prev.x + prev.width()/2
+		col.x = prev.x + prev.width()*3/5
 		prev.nextCol = col
 	}
 	return col
