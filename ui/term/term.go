@@ -111,7 +111,7 @@ func (t *UI) Flush() {
 func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 	y := int(ev.Y)
 	if y < t.y() {
-		t.tag.click(ev)
+		t.tag.handleMouseEvent(ev)
 		t.activeText = t.tag
 		return
 	}
@@ -256,7 +256,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 	}
 
 	if y >= col.tag.y && y < col.y() {
-		col.tag.click(ev)
+		col.tag.handleMouseEvent(ev)
 		col.ui.activeText = col.tag
 		return
 	}
@@ -268,14 +268,14 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 			continue
 		}
 		if y >= win.body.y {
-			win.body.click(ev)
+			win.body.handleMouseEvent(ev)
 			col.ui.activeText = win.body
 		} else {
 			if ev.Direction == mouse.DirPress && x == win.col.x && y == win.tag.y {
 				col.ui.grabbedWin = win
 				break
 			}
-			win.tag.click(ev)
+			win.tag.handleMouseEvent(ev)
 			col.ui.activeText = win.tag
 		}
 		break
@@ -540,7 +540,7 @@ func (t *Text) Size() (w, h int) {
 	return t.width, t.height
 }
 
-func (t *Text) click(ev mouse.Event) {
+func (t *Text) handleMouseEvent(ev mouse.Event) {
 	if t.mouseEventHandler == nil {
 		return
 	}
