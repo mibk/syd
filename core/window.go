@@ -1,13 +1,9 @@
 package core
 
 import (
-	"bytes"
 	"os"
-	"os/exec"
-	"strings"
 	"unicode/utf8"
 
-	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
 )
 
@@ -48,76 +44,6 @@ func (win *Window) Close() error {
 	return win.con.Close()
 }
 
-func (win *Window) execute(command string) {
-	switch command {
-	case "Exit":
-		// TODO: This is just a temporary solution
-		// until a proper solution is found.
-		go func() {
-			ui.Events <- ui.Quit
-		}()
-	case "Newcol":
-		win.col.ed.NewColumn()
-	case "Delcol":
-		win.col.Close()
-	case "New":
-		win.col.NewWindow()
-	case "Del":
-		win.Close()
-	case "Put":
-		if win.filename == "" {
-			var runes []rune
-			var p int64
-			for {
-				r := win.tag.ReadRuneAt(p)
-				if r == 0 || r == EOF {
-					break
-				}
-				runes = append(runes, r)
-				p++
-			}
-			if len(runes) == 0 {
-				return
-			}
-			win.filename = string(runes)
-		}
-		if err := win.saveFile(); err != nil {
-			panic(err)
-		}
-		win.buf.Clean()
-	case "Undo":
-		win.Undo()
-	case "Redo":
-		win.Redo()
-	default:
-		// TODO: Implement this using io.Reader; read directly
-		// from the buffer.
-		q0, q1 := win.body.Selected()
-		selected := win.body.SelectionToString(q0, q1)
-		var buf bytes.Buffer
-		rd := strings.NewReader(selected)
-		cmd := exec.Command(command)
-		cmd.Stdin = rd
-		cmd.Stdout = &buf
-		// TODO: Redirect stderr somewhere.
-		switch err := cmd.Run(); err := err.(type) {
-		case *exec.Error:
-			if err.Err == exec.ErrNotFound {
-				return
-			}
-			panic(err)
-		case error:
-			panic(err)
-		}
-		s := buf.String()
-		win.body.Insert(s)
-		win.body.Select(q0, q0+int64(utf8.RuneCountInString(s)))
-
-		// TODO: Come up with a better solution
-		win.buf.buf.CommitChanges()
-	}
-}
-
 func (win *Window) saveFile() error {
 	// TODO: Read bytes directly from the undo.Buffer.
 	// TODO: Don't use '~' suffix, make saving safer.
@@ -146,3 +72,6 @@ func (win *Window) saveFile() error {
 
 	return os.Rename(win.filename+"~", win.filename)
 }
+
+func (win *Window) column() (col *Column, ok bool) { return win.col, true }
+func (win *Window) window() (w *Window, ok bool)   { return win, true }
