@@ -15,7 +15,7 @@ import (
 )
 
 type Text struct {
-	win  *Window
+	ctx  cmdContext
 	text *term.Text
 	buf  Buffer
 
@@ -25,9 +25,9 @@ type Text struct {
 	timestamp time.Time
 }
 
-func newText(win *Window, buf Buffer, tt *term.Text) *Text {
+func newText(ctx cmdContext, buf Buffer, tt *term.Text) *Text {
 	t := &Text{
-		win:  win,
+		ctx:  ctx,
 		buf:  buf,
 		text: tt,
 	}
@@ -150,11 +150,16 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 	case mouse.DirPress:
 		if ev.Button == mouse.ButtonMiddle {
 			cmd := t.SelectionToString(t.dblclick(q))
-			execute(t.win, cmd)
+			execute(t.ctx, cmd)
 			return
 		} else if ev.Button == mouse.ButtonRight {
 			path := t.SelectionToString(t.selectPath(q))
-			t.win.col.NewWindowFile(path)
+			// TODO: Don't require being in a column context. Just
+			// open the file in the most recent column (using similar
+			// heuristic as in Acme).
+			if col, ok := t.ctx.column(); ok {
+				col.NewWindowFile(path)
+			}
 			return
 		}
 

@@ -99,7 +99,13 @@ func (t *UI) Push_Key_Event(ev key.Event) {
 }
 
 func (t *UI) NewColumn() *Column {
-	col := &Column{ui: t}
+	tag := &Text{
+		frame:   new(Frame),
+		bgstyle: tagbg,
+		hlstyle: taghl,
+	}
+	col := &Column{ui: t, tag: tag}
+	tag.ui = t
 	if t.firstCol == nil {
 		t.firstCol = col
 	} else {
@@ -178,11 +184,15 @@ type Column struct {
 	ui *UI
 	x  int
 
+	tag *Text
+
 	winMovedHandler WindowMovedHandler
 
 	firstWin *Window
 	nextCol  *Column
 }
+
+func (col *Column) Tag() *Text { return col.tag }
 
 func (col *Column) OnWindowMoved(h WindowMovedHandler) {
 	col.winMovedHandler = h
@@ -205,6 +215,12 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 
 	if ev.Direction == mouse.DirPress && x == col.x && y == col.ui.y {
 		col.ui.grabbedCol = col
+		return
+	}
+
+	if y >= col.tag.y && y < col.y() {
+		col.tag.click(ev)
+		col.ui.activeText = col.tag
 		return
 	}
 
@@ -246,8 +262,8 @@ func (col *Column) NewWindow() *Window {
 		tag:  tag,
 		body: body,
 	}
-	tag.win = win
-	body.win = win
+	tag.ui = col.ui
+	body.ui = col.ui
 
 	if col.firstWin == nil {
 		if col.ui.activeText == nil {
@@ -266,11 +282,26 @@ func (col *Column) Delete() {
 	col.ui.removeCol(col)
 }
 
+func (col *Column) Clear() {
+	w := col.width()
+	h := col.height()
+	col.tag.width = w - 1
+	col.tag.height = h - 1
+	col.tag.clear()
+}
+
 func (col *Column) flush() {
+	h := len(col.tag.frame.lines)
+	col.tag.height = h
+	col.tag.x = col.x + 1
+	col.tag.y = col.ui.y
+	col.tag.flush()
+
 	col.ui.screen.SetContent(col.x, col.ui.y, ' ', nil, testbg)
-	for x := col.x + 1; x < col.x+col.width(); x++ {
-		col.ui.screen.SetContent(x, col.ui.y, ' ', nil, tagbg)
+	for y := col.ui.y + 1; y < col.y(); y++ {
+		col.ui.screen.SetContent(col.x, y, ' ', nil, col.tag.bgstyle)
 	}
+
 	if col.firstWin == nil {
 		for x := col.x; x < col.x+col.width(); x++ {
 			coly, colh := col.y(), col.height()
@@ -367,7 +398,7 @@ func (col *Column) width() int {
 }
 
 // Column's content y and height.
-func (col *Column) y() int      { return col.ui.y + 1 } // TODO: Replace 1 with the number of tag lines.
+func (col *Column) y() int      { return col.ui.y + len(col.tag.frame.lines) }
 func (col *Column) height() int { return col.ui.height - col.y() }
 
 type Window struct {
@@ -407,13 +438,12 @@ func (win *Window) Delete() {
 }
 
 func (win *Window) flush() {
+	h := len(win.tag.frame.lines)
+	win.tag.height = h
 	winy := win.y + win.col.y()
 	win.tag.x = win.col.x + 1
 	win.tag.y = winy
 	win.tag.flush()
-
-	h := len(win.tag.frame.lines)
-	win.tag.height = h
 
 	y := 0
 	for ; y < h; y++ {
@@ -448,7 +478,7 @@ func (win *Window) height() int {
 }
 
 type Text struct {
-	win   *Window
+	ui    *UI
 	frame *Frame
 
 	width, height int
@@ -573,7 +603,7 @@ func (t *Text) flush() {
 			for i := 0; i < w && x < t.width; i++ {
 				// TODO: Should the rest of the tab at the end of a
 				// line span the begining of the next line?
-				t.win.col.ui.screen.SetContent(t.x+x, t.y+y, r, nil, style)
+				t.ui.screen.SetContent(t.x+x, t.y+y, r, nil, style)
 				x++
 				if style == reverse {
 					style = t.bgstyle
@@ -583,7 +613,7 @@ func (t *Text) flush() {
 		selStyle(p)
 	fill:
 		for ; x < t.width; x++ {
-			t.win.col.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, style)
+			t.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, style)
 			if style == reverse {
 				style = t.bgstyle
 			}
@@ -596,7 +626,7 @@ func (t *Text) fill() {
 	bg := testbg
 	for y := len(t.frame.lines); y < t.height; y++ {
 		for x := 0; x < t.width; x++ {
-			t.win.col.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, bg)
+			t.ui.screen.SetContent(t.x+x, t.y+y, ' ', nil, bg)
 		}
 	}
 }

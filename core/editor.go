@@ -54,6 +54,7 @@ func (ed *Editor) NewColumn() *Column {
 		col: ed.ui.NewColumn(),
 	}
 	ed.cols = append(ed.cols, col)
+	col.tag = newText(col, &BasicBuffer{[]rune("Exit Newcol Delcol New ")}, col.col.Tag())
 	col.col.OnWindowMoved(func(win *term.Window, from *term.Column) {
 		if from == col.col {
 			return
@@ -94,11 +95,14 @@ func (ed *Editor) deleteColumn(todel *Column) {
 
 type Column struct {
 	ed   *Editor
+	tag  *Text
 	wins []*Window
 	col  *term.Column
 }
 
 func (col *Column) Refresh() {
+	col.col.Clear()
+	col.tag.loadText()
 	for _, win := range col.wins {
 		win.LoadText()
 	}
@@ -131,7 +135,7 @@ func (col *Column) newWindow(con Content) *Window {
 	window := col.col.NewWindow()
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
 	win := &Window{col: col, win: window, con: con, buf: buf}
-	win.tag = newText(win, &BasicBuffer{[]rune("\x00Exit Newcol Delcol New Del Put Undo Redo ")}, window.Tag())
+	win.tag = newText(win, &BasicBuffer{[]rune("\x00Del Put Undo Redo ")}, window.Tag())
 	win.body = newText(win, buf, window.Body())
 	col.wins = append(col.wins, win)
 	return win
@@ -174,3 +178,6 @@ func (col *Column) Close() error {
 	col.ed.deleteColumn(col)
 	return nil
 }
+
+func (col *Column) column() (c *Column, ok bool) { return col, true }
+func (col *Column) window() (w *Window, ok bool) { return nil, false }
