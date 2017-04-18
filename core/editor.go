@@ -17,19 +17,25 @@ type Editor struct {
 	vi         *vi.Parser
 	shouldQuit bool
 
+	tag *Text
+
 	cols []*Column
 	mode int
 }
 
 func NewEditor(u *term.UI) *Editor {
-	return &Editor{
+	ed := &Editor{
 		ui:     u,
 		events: make(chan ui.Event),
 	}
+	ed.tag = newText(ed, &BasicBuffer{[]rune("Newcol Exit ")}, u.Tag())
+	return ed
 }
 
 func (ed *Editor) Main() {
 	for !ed.shouldQuit {
+		ed.ui.Clear()
+		ed.tag.loadText()
 		for _, col := range ed.cols {
 			col.Refresh()
 		}
@@ -54,7 +60,7 @@ func (ed *Editor) NewColumn() *Column {
 		col: ed.ui.NewColumn(),
 	}
 	ed.cols = append(ed.cols, col)
-	col.tag = newText(col, &BasicBuffer{[]rune("Exit Newcol Delcol New ")}, col.col.Tag())
+	col.tag = newText(col, &BasicBuffer{[]rune("New Delcol ")}, col.col.Tag())
 	col.col.OnWindowMoved(func(win *term.Window, from *term.Column) {
 		if from == col.col {
 			return
@@ -92,6 +98,10 @@ func (ed *Editor) deleteColumn(todel *Column) {
 	}
 	panic("column not found")
 }
+
+func (ed *Editor) editor() *Editor         { return ed }
+func (ed *Editor) column() (*Column, bool) { return nil, false }
+func (ed *Editor) window() (*Window, bool) { return nil, false }
 
 type Column struct {
 	ed   *Editor
@@ -179,5 +189,6 @@ func (col *Column) Close() error {
 	return nil
 }
 
+func (col *Column) editor() (ed *Editor)         { return col.ed }
 func (col *Column) column() (c *Column, ok bool) { return col, true }
 func (col *Column) window() (w *Window, ok bool) { return nil, false }

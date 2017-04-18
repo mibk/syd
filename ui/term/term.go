@@ -33,10 +33,10 @@ type UI struct {
 	screen        tcell.Screen
 	wasBtnPressed bool
 
-	y      int
 	width  int
 	height int
 
+	tag      *Text
 	firstCol *Column
 
 	grabbedCol *Column // grabbed col or nil
@@ -55,8 +55,14 @@ func (t *UI) Init() error {
 	sc.EnableMouse()
 	t.screen = sc
 
+	t.tag = &Text{
+		frame:   new(Frame),
+		bgstyle: tagbg,
+		hlstyle: taghl,
+	}
+	t.tag.ui = t
+
 	// TODO: Just for testing purposes.
-	t.y = 1
 	w, h := t.Size()
 	t.width = w - 1
 	t.height = h - 2
@@ -72,7 +78,27 @@ func (t *UI) Close() error {
 
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
+func (t *UI) Tag() *Text { return t.tag }
+
+func (t *UI) Clear() {
+	t.tag.width = t.width - 1
+	t.tag.height = t.height - 1
+	t.tag.clear()
+}
+
+// TODO: Just for testing purposes; remove.
+const ui_y = 1
+
 func (t *UI) Flush() {
+	t.tag.x = ui_y
+	t.tag.y = ui_y
+	t.tag.height = len(t.tag.frame.lines)
+	t.tag.flush()
+
+	for y := ui_y; y < ui_y+t.tag.height; y++ {
+		t.screen.SetContent(0, y, ' ', nil, t.tag.bgstyle)
+	}
+
 	col := t.firstCol
 	for col != nil {
 		col.flush()
@@ -83,6 +109,13 @@ func (t *UI) Flush() {
 
 // TODO: This is for temporary reasons. Remove it.
 func (t *UI) Push_Mouse_Event(ev mouse.Event) {
+	y := int(ev.Y)
+	if y < t.y() {
+		t.tag.click(ev)
+		t.activeText = t.tag
+		return
+	}
+
 	col := t.firstCol
 	for col != nil {
 		if int(ev.X) < col.x+col.width() {
@@ -180,6 +213,10 @@ func (t *UI) removeCol(col *Column) {
 	panic("column not found")
 }
 
+func (t *UI) y() int {
+	return ui_y + len(t.tag.frame.lines)
+}
+
 type Column struct {
 	ui *UI
 	x  int
@@ -213,7 +250,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 		return
 	}
 
-	if ev.Direction == mouse.DirPress && x == col.x && y == col.ui.y {
+	if ev.Direction == mouse.DirPress && x == col.x && y == col.ui.y() {
 		col.ui.grabbedCol = col
 		return
 	}
@@ -291,14 +328,15 @@ func (col *Column) Clear() {
 }
 
 func (col *Column) flush() {
+	uiy := col.ui.y()
 	h := len(col.tag.frame.lines)
 	col.tag.height = h
 	col.tag.x = col.x + 1
-	col.tag.y = col.ui.y
+	col.tag.y = uiy
 	col.tag.flush()
 
-	col.ui.screen.SetContent(col.x, col.ui.y, ' ', nil, testbg)
-	for y := col.ui.y + 1; y < col.y(); y++ {
+	col.ui.screen.SetContent(col.x, uiy, ' ', nil, testbg)
+	for y := uiy + 1; y < col.y(); y++ {
 		col.ui.screen.SetContent(col.x, y, ' ', nil, col.tag.bgstyle)
 	}
 
@@ -398,7 +436,7 @@ func (col *Column) width() int {
 }
 
 // Column's content y and height.
-func (col *Column) y() int      { return col.ui.y + len(col.tag.frame.lines) }
+func (col *Column) y() int      { return col.ui.y() + len(col.tag.frame.lines) }
 func (col *Column) height() int { return col.ui.height - col.y() }
 
 type Window struct {

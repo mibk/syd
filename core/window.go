@@ -73,5 +73,6 @@ func (win *Window) saveFile() error {
 	return os.Rename(win.filename+"~", win.filename)
 }
 
+func (win *Window) editor() (ed *Editor)           { return win.col.ed }
 func (win *Window) column() (col *Column, ok bool) { return win.col, true }
 func (win *Window) window() (w *Window, ok bool)   { return win, true }

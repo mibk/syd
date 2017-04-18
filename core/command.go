@@ -10,6 +10,7 @@ import (
 )
 
 type cmdContext interface {
+	editor() (ed *Editor)
 	column() (col *Column, ok bool)
 	window() (win *Window, ok bool)
 }
@@ -24,14 +25,15 @@ func execute(ctx cmdContext, command string) {
 			ui.Events <- ui.Quit
 		}()
 
-	case "Newcol", "Delcol", "New":
+	case "Newcol":
+		ctx.editor().NewColumn()
+
+	case "Delcol", "New":
 		col, ok := ctx.column()
 		if !ok {
 			return
 		}
 		switch command {
-		case "Newcol":
-			col.ed.NewColumn()
 		case "Delcol":
 			col.Close()
 		case "New":
