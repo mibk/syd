@@ -25,6 +25,7 @@ func NewEditor(u *term.UI) *Editor {
 		ui:     u,
 		events: make(chan ui.Event),
 	}
+	// TODO: Move the cursor to the end of the line.
 	ed.tag = newText(ed, &BasicBuffer{[]rune("Newcol Exit ")}, u.Tag())
 	return ed
 }

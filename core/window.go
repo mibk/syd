@@ -23,7 +23,6 @@ type Window struct {
 func (win *Window) SetFilename(filename string) {
 	win.filename = filename
 	win.tag.buf.Insert(0, filename)
-	// TODO: Move the cursor to the end of the line.
 }
 
 func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO: delete
