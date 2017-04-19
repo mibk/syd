@@ -2,6 +2,7 @@ package core
 
 import (
 	"io"
+	"os"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -158,7 +159,9 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 			// open the file in the most recent column (using similar
 			// heuristic as in Acme).
 			if col, ok := t.ctx.column(); ok {
-				col.NewWindowFile(path)
+				if _, err := os.Stat(path); err == nil {
+					col.NewWindowFile(path)
+				}
 			}
 			return
 		}
