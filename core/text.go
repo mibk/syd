@@ -150,7 +150,13 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 	switch ev.Direction {
 	case mouse.DirPress:
 		if ev.Button == mouse.ButtonMiddle {
-			cmd := t.SelectionToString(t.dblclick(q))
+			var q0, q1 int64
+			if q >= t.q0 && q < t.q1 {
+				q0, q1 = t.q0, t.q1
+			} else {
+				q0, q1 = t.selectPath(q)
+			}
+			cmd := t.SelectionToString(q0, q1)
 			execute(t.ctx, cmd)
 			return
 		} else if ev.Button == mouse.ButtonRight {

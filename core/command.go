@@ -16,6 +16,9 @@ type cmdContext interface {
 }
 
 func execute(ctx cmdContext, command string) {
+	if command == "" {
+		return
+	}
 	// TODO: Print err if the context isn't sufficient.
 	switch command {
 	case "Exit":
@@ -76,6 +79,11 @@ func execute(ctx cmdContext, command string) {
 		case "Redo":
 			win.Redo()
 		default:
+			if command[0] != '|' {
+				return
+			}
+			command = command[1:]
+
 			// TODO: Implement this using io.Reader; read directly
 			// from the buffer.
 			q0, q1 := win.body.Selected()
