@@ -3,9 +3,9 @@ package core
 import (
 	"os"
 
-	"github.com/mibk/syd/pkg/undo"
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
+	"github.com/mibk/syd/undo"
 	"github.com/mibk/syd/vi"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"

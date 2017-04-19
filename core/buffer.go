@@ -4,7 +4,7 @@ import (
 	"io"
 	"unicode/utf8"
 
-	"github.com/mibk/syd/pkg/undo"
+	"github.com/mibk/syd/undo"
 )
 
 type Buffer interface {
