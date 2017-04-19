@@ -23,6 +23,7 @@ type Window struct {
 func (win *Window) SetFilename(filename string) {
 	win.filename = filename
 	win.tag.buf.Insert(0, filename)
+	win.col.ed.wins[filename] = win
 }
 
 func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO: delete

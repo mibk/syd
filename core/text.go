@@ -159,6 +159,9 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 			// open the file in the most recent column (using similar
 			// heuristic as in Acme).
 			if col, ok := t.ctx.column(); ok {
+				if _, ok := col.ed.wins[path]; ok {
+					return
+				}
 				if _, err := os.Stat(path); err == nil {
 					col.NewWindowFile(path)
 				}

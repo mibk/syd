@@ -17,6 +17,7 @@ type Editor struct {
 	tag *Text
 
 	cols []*Column
+	wins map[string]*Window
 	mode int
 }
 
@@ -24,6 +25,7 @@ func NewEditor(u *term.UI) *Editor {
 	ed := &Editor{
 		ui:     u,
 		events: make(chan ui.Event),
+		wins:   make(map[string]*Window),
 	}
 	// TODO: Move the cursor to the end of the line.
 	ed.tag = newText(ed, &BasicBuffer{[]rune("Newcol Exit ")}, u.Tag())
