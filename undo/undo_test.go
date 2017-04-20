@@ -103,7 +103,7 @@ func TestDelete(t *testing.T) {
 	b.checkContent("#2", t, "and what exactly is a joke?")
 
 	cases := []struct {
-		pos, len int
+		off, len int
 		expected string
 	}{
 		{9, 8, "and what is a joke?"},
@@ -113,7 +113,7 @@ func TestDelete(t *testing.T) {
 		{11, 3, "and what exly is a joke?"},
 	}
 	for _, c := range cases {
-		b.delete(c.pos, c.len)
+		b.delete(c.off, c.len)
 		b.checkContent("#3", t, c.expected)
 		b.Undo()
 		b.checkContent("#4", t, "and what exactly is a joke?")
@@ -244,25 +244,25 @@ func (b *Buffer) checkContent(name string, t *testing.T, expected string) {
 	}
 }
 
-func (t *Buffer) insertString(pos int, data string) {
+func (t *Buffer) insertString(off int, data string) {
 	t.CommitChanges()
-	t.cacheInsertString(pos, data)
+	t.cacheInsertString(off, data)
 }
 
-func (t *Buffer) cacheInsertString(pos int, data string) {
-	err := t.Insert(int64(pos), []byte(data))
+func (t *Buffer) cacheInsertString(off int, data string) {
+	err := t.Insert(int64(off), []byte(data))
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (t *Buffer) delete(pos, length int) {
+func (t *Buffer) delete(off, length int) {
 	t.CommitChanges()
-	t.cacheDelete(pos, length)
+	t.cacheDelete(off, length)
 }
 
-func (t *Buffer) cacheDelete(pos, length int) {
-	t.Delete(int64(pos), int64(length))
+func (t *Buffer) cacheDelete(off, length int) {
+	t.Delete(int64(off), int64(length))
 }
 
 func (t *Buffer) printPieces() {

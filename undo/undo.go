@@ -85,7 +85,7 @@ import (
 	"time"
 )
 
-var ErrWrongPos = errors.New("position is greater than text size")
+var ErrWrongOffset = errors.New("offset is greater than buffer size")
 
 // A Buffer is a structure capable of two operations: inserting or deleting.
 // All operations could be unlimitedly undone or redone.
@@ -118,23 +118,23 @@ func NewBuffer(content []byte) *Buffer {
 	return t
 }
 
-// Insert inserts the data at the given pos in the buffer. An error is return when the
-// given pos is invalid.
-func (b *Buffer) Insert(pos int64, data []byte) error {
+// Insert inserts the data at the given offset in the buffer. An error is return when the
+// given offset is invalid.
+func (b *Buffer) Insert(off int64, data []byte) error {
 	if len(data) == 0 {
 		return nil
 	}
 
-	p, offset := b.findPiece(pos)
+	p, offset := b.findPiece(off)
 	if p == nil {
-		return ErrWrongPos
+		return ErrWrongOffset
 	} else if p == b.cachedPiece {
 		// just update the last inserted piece
 		p.insert(offset, data)
 		return nil
 	}
 
-	c := b.newChange(pos)
+	c := b.newChange(off)
 	var pnew *piece
 	if offset == p.len() {
 		// Insert between two existing pieces, hence there is nothing to
@@ -161,18 +161,18 @@ func (b *Buffer) Insert(pos int64, data []byte) error {
 	return nil
 }
 
-// Delete deletes the portion of the buffer at the pos of given length. An error
-// is returned if the portion isn't in the range of the buffer size. If the length
-// exceeds the size of the buffer, the portions from the pos to the end of the buffer
-// will be deleted.
-func (b *Buffer) Delete(pos, length int64) error {
+// Delete deletes the portion of the length at the given offset. An error is returned
+// if the portion isn't in the range of the buffer size. If the length exceeds the
+// size of the buffer, the portions from off to the end of the buffer will be
+// deleted.
+func (b *Buffer) Delete(off, length int64) error {
 	if length <= 0 {
 		return nil
 	}
 
-	p, offset := b.findPiece(pos)
+	p, offset := b.findPiece(off)
 	if p == nil {
-		return ErrWrongPos
+		return ErrWrongOffset
 	} else if p == b.cachedPiece && p.delete(offset, length) {
 		// try to update the last inserted piece if the length doesn't exceed
 		return nil
@@ -246,7 +246,7 @@ func (b *Buffer) Delete(pos, length int64) error {
 	}
 
 	b.cachedPiece = newStart
-	c := b.newChange(pos)
+	c := b.newChange(off)
 	c.new = newSpan(newStart, newEnd)
 	c.old = newSpan(start, end)
 	swapSpans(c.old, c.new)
@@ -264,14 +264,14 @@ func (b *Buffer) newAction() *action {
 
 // newChange is associated with the current action or a newly allocated one if
 // none exists.
-func (b *Buffer) newChange(pos int64) *change {
+func (b *Buffer) newChange(off int64) *change {
 	a := b.currentAction
 	if a == nil {
 		a = b.newAction()
 		b.cachedPiece = nil
 		b.currentAction = a
 	}
-	c := &change{pos: pos}
+	c := &change{off: off}
 	a.changes = append(a.changes, c)
 	return c
 }
@@ -290,39 +290,39 @@ func (b *Buffer) newEmptyPiece() *piece {
 	return b.newPiece(nil, nil, nil)
 }
 
-// findPiece returns the piece holding the text at the byte offset pos. If pos happens
-// to be at a piece boundary i.e. the first byte of a piece then the previous piece
-// to the left is returned with an offset of piece's length.
+// findPiece returns the piece holding the text at the byte offset. If off happens
+// to be at a piece boundary (i.e. the first byte of a piece) then the previous piece
+// to the left is returned with an offset of the piece's length.
 //
-// If pos is zero, the begin sentinel piece is returned.
-func (b *Buffer) findPiece(pos int64) (p *piece, offset int) {
+// If off is zero, the beginning sentinel piece is returned.
+func (b *Buffer) findPiece(off int64) (p *piece, offset int) {
 	var cur int64
 	for p = b.begin; p.next != nil; p = p.next {
-		if cur <= pos && pos <= cur+int64(p.len()) {
-			return p, int(pos - cur)
+		if cur <= off && off <= cur+int64(p.len()) {
+			return p, int(off - cur)
 		}
 		cur += int64(p.len())
 	}
 	return nil, 0
 }
 
-// Undo reverts the last performed action. It return the position in bytes
-// which the action occured on. If there is no action to undo, returned
-// position would be -1.
+// Undo reverts the last performed action. It return the offset in bytes
+// at which the action occured. If there is no action to undo, Undo returns
+// -1.
 func (b *Buffer) Undo() int64 {
 	b.CommitChanges()
 	a := b.unshiftAction()
 	if a == nil {
 		return -1
 	}
-	var pos int64
+	var off int64
 	for i := len(a.changes) - 1; i >= 0; i-- {
 		c := a.changes[i]
 		swapSpans(c.new, c.old)
-		pos = c.pos
+		off = c.off
 	}
 
-	return pos
+	return off
 }
 
 func (b *Buffer) unshiftAction() *action {
@@ -333,21 +333,21 @@ func (b *Buffer) unshiftAction() *action {
 	return b.actions[b.head]
 }
 
-// Redo repeats the last undone action. It return the position in bytes
-// which the action occured on. If there is no action to redo, returned
-// position would be -1.
+// Redo repeats the last undone action. It return the offset in bytes
+// at which the action occured. If there is no action to redo, Redo
+// returns -1.
 func (b *Buffer) Redo() int64 {
 	b.CommitChanges()
 	a := b.shiftAction()
 	if a == nil {
 		return -1
 	}
-	var pos int64
+	var off int64
 	for _, c := range a.changes {
 		swapSpans(c.old, c.new)
-		pos = c.pos
+		off = c.off
 	}
-	return pos
+	return off
 }
 
 func (b *Buffer) shiftAction() *action {
@@ -393,7 +393,7 @@ func (b *Buffer) ReadAt(data []byte, off int64) (n int, err error) {
 		if off == 0 {
 			return 0, io.EOF
 		}
-		return 0, ErrWrongPos
+		return 0, ErrWrongOffset
 	}
 
 	for n < len(data) && p != nil {
@@ -417,7 +417,7 @@ type action struct {
 type change struct {
 	old span  // all pieces which are being modified/swapped out by the change
 	new span  // all pieces which are introduced/swapped int by the change
-	pos int64 // absolute position at which the change occured
+	off int64 // absolute offset at which the change occured
 }
 
 // span holds a certain range of pieces. Changes to the document are allways
@@ -471,14 +471,14 @@ func (p *piece) len() int {
 	return len(p.data)
 }
 
-func (p *piece) insert(pos int, data []byte) {
-	p.data = append(p.data[:pos], append(data, p.data[pos:]...)...)
+func (p *piece) insert(off int, data []byte) {
+	p.data = append(p.data[:off], append(data, p.data[off:]...)...)
 }
 
-func (p *piece) delete(pos int, length int64) bool {
-	if int64(pos)+length > int64(len(p.data)) {
+func (p *piece) delete(off int, length int64) bool {
+	if int64(off)+length > int64(len(p.data)) {
 		return false
 	}
-	p.data = append(p.data[:pos], p.data[pos+int(length):]...)
+	p.data = append(p.data[:off], p.data[off+int(length):]...)
 	return true
 }
