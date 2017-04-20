@@ -87,82 +87,6 @@ import (
 
 var ErrWrongPos = errors.New("position is greater than text size")
 
-// piece represents a piece of the text. All active pieces chained together form
-// the whole content of the text.
-type piece struct {
-	id         int
-	prev, next *piece
-	data       []byte
-}
-
-func (p *piece) len() int {
-	return len(p.data)
-}
-
-func (p *piece) insert(pos int, data []byte) {
-	p.data = append(p.data[:pos], append(data, p.data[pos:]...)...)
-}
-
-func (p *piece) delete(pos int, length int64) bool {
-	if int64(pos)+length > int64(len(p.data)) {
-		return false
-	}
-	p.data = append(p.data[:pos], p.data[pos+int(length):]...)
-	return true
-}
-
-// span holds a certain range of pieces. Changes to the document are allways
-// performed by swapping out an existing span with a new one.
-type span struct {
-	start, end *piece // start/end of the span
-	len        int    // the sum of the lengths of the pieces which form this span
-}
-
-// change keeps all needed information to redo/undo an insertion/deletion.
-type change struct {
-	old span  // all pieces which are being modified/swapped out by the change
-	new span  // all pieces which are introduced/swapped int by the change
-	pos int64 // absolute position at which the change occured
-}
-
-// action is a list of changes which are used to undo/redo all modifications.
-type action struct {
-	changes []*change
-	time    time.Time // when the first change of this action was performed
-}
-
-func newSpan(start, end *piece) span {
-	s := span{start: start, end: end}
-	for p := start; p != nil; p = p.next {
-		s.len += p.len()
-		if p == end {
-			break
-		}
-	}
-	return s
-}
-
-// swapSpans swaps out an old span and replace it with a new one.
-//  - If old is an empty span do not remove anything, just insert the new one.
-//  - If new is an empty span do not insert anything, just remove the old one.
-func swapSpans(old, new span) {
-	if old.len == 0 && new.len == 0 {
-		return
-	} else if old.len == 0 {
-		// insert new span
-		new.start.prev.next = new.start
-		new.end.next.prev = new.end
-	} else if new.len == 0 {
-		// delete old span
-		old.start.prev.next = old.end.next
-		old.end.next.prev = old.start.prev
-	} else {
-		// replace old with new
-		old.start.prev.next = new.start
-		old.end.next.prev = new.end
-	}
-}
-
 // A Buffer is a structure capable of two operations: inserting or deleting.
 // All operations could be unlimitedly undone or redone.
 type Buffer struct {
@@ -192,58 +116,6 @@ func NewBuffer(content []byte) *Buffer {
 		t.end.prev = p
 	}
 	return t
-}
-
-func (b *Buffer) newPiece(data []byte, prev, next *piece) *piece {
-	b.piecesCnt++
-	return &piece{
-		id:   b.piecesCnt,
-		prev: prev,
-		next: next,
-		data: data,
-	}
-}
-
-func (b *Buffer) newEmptyPiece() *piece {
-	return b.newPiece(nil, nil, nil)
-}
-
-// findPiece returns the piece holding the text at the byte offset pos. If pos happens
-// to be at a piece boundary i.e. the first byte of a piece then the previous piece
-// to the left is returned with an offset of piece's length.
-//
-// If pos is zero, the begin sentinel piece is returned.
-func (b *Buffer) findPiece(pos int64) (p *piece, offset int) {
-	var cur int64
-	for p = b.begin; p.next != nil; p = p.next {
-		if cur <= pos && pos <= cur+int64(p.len()) {
-			return p, int(pos - cur)
-		}
-		cur += int64(p.len())
-	}
-	return nil, 0
-}
-
-// newChange is associated with the current action or a newly allocated one if
-// none exists.
-func (b *Buffer) newChange(pos int64) *change {
-	a := b.currentAction
-	if a == nil {
-		a = b.newAction()
-		b.cachedPiece = nil
-		b.currentAction = a
-	}
-	c := &change{pos: pos}
-	a.changes = append(a.changes, c)
-	return c
-}
-
-// newAction creates a new action and throws away all undone actions.
-func (b *Buffer) newAction() *action {
-	a := &action{time: time.Now()}
-	b.actions = append(b.actions[:b.head], a)
-	b.head++
-	return a
 }
 
 // Insert inserts the data at the given pos in the buffer. An error is return when the
@@ -382,6 +254,58 @@ func (b *Buffer) Delete(pos, length int64) error {
 	return nil
 }
 
+// newAction creates a new action and throws away all undone actions.
+func (b *Buffer) newAction() *action {
+	a := &action{time: time.Now()}
+	b.actions = append(b.actions[:b.head], a)
+	b.head++
+	return a
+}
+
+// newChange is associated with the current action or a newly allocated one if
+// none exists.
+func (b *Buffer) newChange(pos int64) *change {
+	a := b.currentAction
+	if a == nil {
+		a = b.newAction()
+		b.cachedPiece = nil
+		b.currentAction = a
+	}
+	c := &change{pos: pos}
+	a.changes = append(a.changes, c)
+	return c
+}
+
+func (b *Buffer) newPiece(data []byte, prev, next *piece) *piece {
+	b.piecesCnt++
+	return &piece{
+		id:   b.piecesCnt,
+		prev: prev,
+		next: next,
+		data: data,
+	}
+}
+
+func (b *Buffer) newEmptyPiece() *piece {
+	return b.newPiece(nil, nil, nil)
+}
+
+// findPiece returns the piece holding the text at the byte offset pos. If pos happens
+// to be at a piece boundary i.e. the first byte of a piece then the previous piece
+// to the left is returned with an offset of piece's length.
+//
+// If pos is zero, the begin sentinel piece is returned.
+func (b *Buffer) findPiece(pos int64) (p *piece, offset int) {
+	var cur int64
+	for p = b.begin; p.next != nil; p = p.next {
+		if cur <= pos && pos <= cur+int64(p.len()) {
+			return p, int(pos - cur)
+		}
+		cur += int64(p.len())
+	}
+	return nil, 0
+}
+
 // Undo reverts the last performed action. It return the position in bytes
 // which the action occured on. If there is no action to undo, returned
 // position would be -1.
@@ -481,4 +405,80 @@ func (b *Buffer) ReadAt(data []byte, off int64) (n int, err error) {
 		return n, io.EOF
 	}
 	return n, nil
+}
+
+// action is a list of changes which are used to undo/redo all modifications.
+type action struct {
+	changes []*change
+	time    time.Time // when the first change of this action was performed
+}
+
+// change keeps all needed information to redo/undo an insertion/deletion.
+type change struct {
+	old span  // all pieces which are being modified/swapped out by the change
+	new span  // all pieces which are introduced/swapped int by the change
+	pos int64 // absolute position at which the change occured
+}
+
+// span holds a certain range of pieces. Changes to the document are allways
+// performed by swapping out an existing span with a new one.
+type span struct {
+	start, end *piece // start/end of the span
+	len        int    // the sum of the lengths of the pieces which form this span
+}
+
+func newSpan(start, end *piece) span {
+	s := span{start: start, end: end}
+	for p := start; p != nil; p = p.next {
+		s.len += p.len()
+		if p == end {
+			break
+		}
+	}
+	return s
+}
+
+// swapSpans swaps out an old span and replace it with a new one.
+//  - If old is an empty span do not remove anything, just insert the new one.
+//  - If new is an empty span do not insert anything, just remove the old one.
+func swapSpans(old, new span) {
+	if old.len == 0 && new.len == 0 {
+		return
+	} else if old.len == 0 {
+		// insert new span
+		new.start.prev.next = new.start
+		new.end.next.prev = new.end
+	} else if new.len == 0 {
+		// delete old span
+		old.start.prev.next = old.end.next
+		old.end.next.prev = old.start.prev
+	} else {
+		// replace old with new
+		old.start.prev.next = new.start
+		old.end.next.prev = new.end
+	}
+}
+
+// piece represents a piece of the text. All active pieces chained together form
+// the whole content of the text.
+type piece struct {
+	id         int
+	prev, next *piece
+	data       []byte
+}
+
+func (p *piece) len() int {
+	return len(p.data)
+}
+
+func (p *piece) insert(pos int, data []byte) {
+	p.data = append(p.data[:pos], append(data, p.data[pos:]...)...)
+}
+
+func (p *piece) delete(pos int, length int64) bool {
+	if int64(pos)+length > int64(len(p.data)) {
+		return false
+	}
+	p.data = append(p.data[:pos], p.data[pos+int(length):]...)
+	return true
 }
