@@ -310,7 +310,7 @@ func (b *Buffer) findPiece(off int64) (p *piece, offset int) {
 // at which the action occured. If there is no action to undo, Undo returns
 // -1.
 func (b *Buffer) Undo() int64 {
-	b.CommitChanges()
+	b.Commit()
 	a := b.unshiftAction()
 	if a == nil {
 		return -1
@@ -337,7 +337,7 @@ func (b *Buffer) unshiftAction() *action {
 // at which the action occured. If there is no action to redo, Redo
 // returns -1.
 func (b *Buffer) Redo() int64 {
-	b.CommitChanges()
+	b.Commit()
 	a := b.shiftAction()
 	if a == nil {
 		return -1
@@ -358,9 +358,8 @@ func (b *Buffer) shiftAction() *action {
 	return b.actions[b.head-1]
 }
 
-// CommitChanges commits the current action. All following changes won't be
-// a part of that action.
-func (b *Buffer) CommitChanges() {
+// Commit commits the currently performed changes and creates an undo/redo point.
+func (b *Buffer) Commit() {
 	b.currentAction = nil
 	b.cachedPiece = nil
 }

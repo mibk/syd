@@ -24,9 +24,9 @@ func TestOverall(t *testing.T) {
 	b.checkPiecesCnt(t, 6)
 	b.checkContent("#3", t, "All work and no playing makes John a dull boy")
 
-	b.CommitChanges()
+	b.Commit()
 	// Also check that multiple change commits don't create empty changes.
-	b.CommitChanges()
+	b.Commit()
 	b.Delete(20, 14)
 	b.checkContent("#4", t, "All work and no play a dull boy")
 
@@ -245,7 +245,7 @@ func (b *Buffer) checkContent(name string, t *testing.T, expected string) {
 }
 
 func (t *Buffer) insertString(off int, data string) {
-	t.CommitChanges()
+	t.Commit()
 	t.cacheInsertString(off, data)
 }
 
@@ -257,7 +257,7 @@ func (t *Buffer) cacheInsertString(off int, data string) {
 }
 
 func (t *Buffer) delete(off, length int) {
-	t.CommitChanges()
+	t.Commit()
 	t.cacheDelete(off, length)
 }
 
