@@ -241,7 +241,7 @@ func isAlphaNumeric(r rune) bool {
 	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
-func isPath(r rune) bool { return !unicode.IsSpace(r) && r != EOF }
+func isPath(r rune) bool { return !unicode.IsSpace(r) && r != EOF && r != 0 }
 
 func (t *Text) handleKeyEvent(ev key.Event) {
 	switch {
