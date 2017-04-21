@@ -104,6 +104,16 @@ func (t *UI) Flush() {
 		col.flush()
 		col = col.nextCol
 	}
+
+	if t.firstCol == nil {
+		uiy := t.y()
+		for x := 0; x < t.width; x++ {
+			for y := uiy; y < uiy+t.height; y++ {
+				t.screen.SetContent(x, y, ' ', nil, whitebg)
+			}
+		}
+	}
+
 	t.screen.Show()
 }
 
@@ -124,7 +134,6 @@ func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 		}
 		col = col.nextCol
 	}
-	panic("column not found")
 }
 
 func (t *UI) Push_Key_Event(ev key.Event) {

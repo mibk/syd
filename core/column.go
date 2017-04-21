@@ -62,14 +62,6 @@ func (col *Column) deleteWindow(todel *Window) {
 	for i, win := range col.wins {
 		if win == todel {
 			col.wins = append(col.wins[:i], col.wins[i+1:]...)
-			// TODO: Once columns and editor tags are implemented,
-			// remove this.
-			for _, col := range col.ed.cols {
-				if len(col.wins) > 0 {
-					return
-				}
-			}
-			col.ed.shouldQuit = true
 			return
 		}
 	}
