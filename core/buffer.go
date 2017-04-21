@@ -120,10 +120,11 @@ func (b *UndoBuffer) Delete(q0, q1 int64) {
 }
 
 func (b *UndoBuffer) End() int64 {
-	var err error
-	p := b.pos + 1
-	for ; err == nil; p++ {
-		_, _, err = b.ReadRuneAt(p)
+	p := b.pos
+	for ; ; p++ {
+		if _, _, err := b.ReadRuneAt(p); err != nil {
+			break
+		}
 	}
 	return p
 }
