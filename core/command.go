@@ -45,8 +45,6 @@ func execute(ctx cmdContext, command string) {
 		}
 
 	case "Del", "Put", "Undo", "Redo":
-		fallthrough
-	default:
 		win, ok := ctx.window()
 		if !ok {
 			return
@@ -61,54 +59,64 @@ func execute(ctx cmdContext, command string) {
 			win.buf.Undo()
 		case "Redo":
 			win.buf.Redo()
-		default:
-			ed := win.col.ed
-			if ed.errWin == nil {
-				ed.errWin = ed.recentCol().NewWindow()
-				ed.errWin.SetFilename("+Errors")
-				// TODO: This is just a hack because one
-				// cannot write to a window until this method
-				// is at least once called. Remove it.
-				ed.errWin.win.Clear()
-			}
-			wout := ed.errWin
-
-			var stdin io.Reader
-			if command[0] == '|' {
-				command = command[1:]
-
-				// TODO: Implement this using io.Reader; read directly
-				// from the buffer.
-				q0, q1 := win.body.Selected()
-				selected := win.body.SelectionToString(q0, q1)
-				stdin = strings.NewReader(selected)
-				wout = win
-			} else {
-				q := wout.body.buf.End()
-				wout.body.q0, wout.body.q1 = q, q
-			}
-
-			var buf bytes.Buffer
-			cmd := exec.Command(command)
-			cmd.Stdin = stdin
-			cmd.Stdout = &buf
-			// TODO: Redirect stderr somewhere.
-			switch err := cmd.Run(); err := err.(type) {
-			case *exec.Error:
-				if err.Err == exec.ErrNotFound {
-					return
-				}
-				panic(err)
-			case error:
-				panic(err)
-			}
-			s := buf.String()
-			q := wout.body.q0
-			wout.body.Insert(s)
-			wout.body.Select(q, q+int64(utf8.RuneCountInString(s)))
-
-			// TODO: Come up with a better solution
-			wout.buf.Commit()
 		}
+	default:
+		shell(ctx, command)
 	}
+}
+
+func shell(ctx cmdContext, command string) {
+	ed := ctx.editor()
+	if ed.errWin == nil {
+		ed.errWin = ed.recentCol().NewWindow()
+		ed.errWin.SetFilename("+Errors")
+		// TODO: This is just a hack because one
+		// cannot write to a window until this method
+		// is at least once called. Remove it.
+		ed.errWin.win.Clear()
+	}
+	wout := ed.errWin
+
+	var stdin io.Reader
+	if command[0] == '|' {
+		win, ok := ctx.window()
+		if !ok {
+			// TODO: Just print to +Errors window (like the rest of
+			// the panics).
+			panic("no current window")
+		}
+		command = command[1:]
+
+		// TODO: Implement this using io.Reader; read directly
+		// from the buffer.
+		q0, q1 := win.body.Selected()
+		selected := win.body.SelectionToString(q0, q1)
+		stdin = strings.NewReader(selected)
+		wout = win
+	} else {
+		q := wout.body.buf.End()
+		wout.body.q0, wout.body.q1 = q, q
+	}
+
+	var buf bytes.Buffer
+	cmd := exec.Command(command)
+	cmd.Stdin = stdin
+	cmd.Stdout = &buf
+	// TODO: Redirect stderr somewhere.
+	switch err := cmd.Run(); err := err.(type) {
+	case *exec.Error:
+		if err.Err == exec.ErrNotFound {
+			return
+		}
+		panic(err)
+	case error:
+		panic(err)
+	}
+	s := buf.String()
+	q := wout.body.q0
+	wout.body.Insert(s)
+	wout.body.Select(q, q+int64(utf8.RuneCountInString(s)))
+
+	// TODO: Come up with a better solution
+	wout.buf.Commit()
 }
