@@ -57,9 +57,9 @@ func execute(ctx cmdContext, command string) {
 			win.saveFile()
 			win.buf.Clean()
 		case "Undo":
-			win.Undo()
+			win.buf.Undo()
 		case "Redo":
-			win.Redo()
+			win.buf.Redo()
 		default:
 			if command[0] != '|' {
 				return

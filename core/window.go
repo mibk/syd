@@ -37,9 +37,6 @@ func (win *Window) LoadText() {
 	win.body.loadText()
 }
 
-func (win *Window) Undo() { win.buf.Undo() }
-func (win *Window) Redo() { win.buf.Redo() }
-
 func (win *Window) Close() error {
 	win.win.Delete()
 	win.col.deleteWindow(win)
