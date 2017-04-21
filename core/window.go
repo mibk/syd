@@ -40,6 +40,9 @@ func (win *Window) LoadText() {
 func (win *Window) Close() error {
 	win.win.Delete()
 	win.col.deleteWindow(win)
+	if ed := win.col.ed; ed.errWin == win {
+		ed.errWin = nil
+	}
 	return win.con.Close()
 }
 

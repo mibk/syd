@@ -16,6 +16,10 @@ type Editor struct {
 
 	tag *Text
 
+	// TODO: Make it just an io.Reader so it's easier to work
+	// with.
+	errWin *Window
+
 	cols []*Column
 	wins map[string]*Window
 	mode int
@@ -82,6 +86,13 @@ func (ed *Editor) Close() error {
 		col.Close()
 	}
 	return nil
+}
+
+func (ed *Editor) recentCol() *Column {
+	if len(ed.cols) == 0 {
+		return ed.NewColumn()
+	}
+	return ed.cols[0]
 }
 
 func (ed *Editor) findColumn(tofind *term.Column) *Column {

@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"io"
 	"os/exec"
 	"strings"
 	"unicode/utf8"
@@ -61,19 +62,35 @@ func execute(ctx cmdContext, command string) {
 		case "Redo":
 			win.buf.Redo()
 		default:
-			if command[0] != '|' {
-				return
+			ed := win.col.ed
+			if ed.errWin == nil {
+				ed.errWin = ed.recentCol().NewWindow()
+				ed.errWin.SetFilename("+Errors")
+				// TODO: This is just a hack because one
+				// cannot write to a window until this method
+				// is at least once called. Remove it.
+				ed.errWin.win.Clear()
 			}
-			command = command[1:]
+			wout := ed.errWin
 
-			// TODO: Implement this using io.Reader; read directly
-			// from the buffer.
-			q0, q1 := win.body.Selected()
-			selected := win.body.SelectionToString(q0, q1)
+			var stdin io.Reader
+			if command[0] == '|' {
+				command = command[1:]
+
+				// TODO: Implement this using io.Reader; read directly
+				// from the buffer.
+				q0, q1 := win.body.Selected()
+				selected := win.body.SelectionToString(q0, q1)
+				stdin = strings.NewReader(selected)
+				wout = win
+			} else {
+				q := wout.body.buf.End()
+				wout.body.q0, wout.body.q1 = q, q
+			}
+
 			var buf bytes.Buffer
-			rd := strings.NewReader(selected)
 			cmd := exec.Command(command)
-			cmd.Stdin = rd
+			cmd.Stdin = stdin
 			cmd.Stdout = &buf
 			// TODO: Redirect stderr somewhere.
 			switch err := cmd.Run(); err := err.(type) {
@@ -86,11 +103,12 @@ func execute(ctx cmdContext, command string) {
 				panic(err)
 			}
 			s := buf.String()
-			win.body.Insert(s)
-			win.body.Select(q0, q0+int64(utf8.RuneCountInString(s)))
+			q := wout.body.q0
+			wout.body.Insert(s)
+			wout.body.Select(q, q+int64(utf8.RuneCountInString(s)))
 
 			// TODO: Come up with a better solution
-			win.buf.Commit()
+			wout.buf.Commit()
 		}
 	}
 }
