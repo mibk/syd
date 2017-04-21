@@ -54,25 +54,7 @@ func execute(ctx cmdContext, command string) {
 		case "Del":
 			win.Close()
 		case "Put":
-			if win.filename == "" {
-				var runes []rune
-				var p int64
-				for {
-					r := win.tag.ReadRuneAt(p)
-					if r == 0 || r == EOF {
-						break
-					}
-					runes = append(runes, r)
-					p++
-				}
-				if len(runes) == 0 {
-					return
-				}
-				win.filename = string(runes)
-			}
-			if err := win.saveFile(); err != nil {
-				panic(err)
-			}
+			win.saveFile()
 			win.buf.Clean()
 		case "Undo":
 			win.Undo()

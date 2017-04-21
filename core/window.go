@@ -44,12 +44,15 @@ func (win *Window) Close() error {
 	return win.con.Close()
 }
 
-func (win *Window) saveFile() error {
+func (win *Window) saveFile() {
+	if win.filename == "" {
+		win.readFilename()
+	}
 	// TODO: Read bytes directly from the undo.Buffer.
 	// TODO: Don't use '~' suffix, make saving safer.
 	f, err := os.Create(win.filename + "~")
 	if err != nil {
-		return err
+		panic(err)
 	}
 
 	var buf [64]byte
@@ -59,7 +62,7 @@ func (win *Window) saveFile() error {
 		r := win.body.ReadRuneAt(p)
 		if r == EOF || len(buf[i:]) < utf8.UTFMax {
 			if _, err := f.Write(buf[:i]); err != nil {
-				return err
+				panic(err)
 			}
 			i = 0
 		}
@@ -70,7 +73,26 @@ func (win *Window) saveFile() error {
 	}
 	f.Close()
 
-	return os.Rename(win.filename+"~", win.filename)
+	if err := os.Rename(win.filename+"~", win.filename); err != nil {
+		panic(err)
+	}
+}
+
+func (win *Window) readFilename() {
+	var runes []rune
+	var p int64
+	for {
+		r := win.tag.ReadRuneAt(p)
+		if r == 0 || r == EOF {
+			break
+		}
+		runes = append(runes, r)
+		p++
+	}
+	if len(runes) == 0 {
+		return
+	}
+	win.filename = string(runes)
 }
 
 func (win *Window) editor() (ed *Editor)           { return win.col.ed }
