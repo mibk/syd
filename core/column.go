@@ -42,6 +42,8 @@ func (col *Column) NewWindowFile(filename string) (*Window, error) {
 	}
 	win := col.newWindow(mm)
 	win.SetFilename(filename)
+	q := win.tag.buf.End()
+	win.tag.q0, win.tag.q1 = q, q
 	return win, nil
 }
 

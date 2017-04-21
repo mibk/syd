@@ -11,6 +11,7 @@ type Buffer interface {
 	ReadRuneAt(q int64) (r rune, size int, err error)
 	Insert(q int64, s string)
 	Delete(q0, q1 int64)
+	End() (q int64)
 }
 
 type BasicBuffer struct {
@@ -33,6 +34,8 @@ func (bb *BasicBuffer) Insert(q int64, s string) {
 func (bb *BasicBuffer) Delete(q0, q1 int64) {
 	bb.runes = append(bb.runes[:q0], bb.runes[q1:]...)
 }
+
+func (bb *BasicBuffer) End() int64 { return int64(len(bb.runes)) }
 
 type UndoBuffer struct {
 	buf    *undo.Buffer
@@ -114,4 +117,13 @@ func (b *UndoBuffer) Delete(q0, q1 int64) {
 	if err := b.buf.Delete(offset, size); err != nil {
 		panic(err)
 	}
+}
+
+func (b *UndoBuffer) End() int64 {
+	var err error
+	p := b.pos + 1
+	for ; err == nil; p++ {
+		_, _, err = b.ReadRuneAt(p)
+	}
+	return p
 }

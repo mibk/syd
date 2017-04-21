@@ -29,6 +29,8 @@ func NewEditor(u *term.UI) *Editor {
 	}
 	// TODO: Move the cursor to the end of the line.
 	ed.tag = newText(ed, &BasicBuffer{[]rune("Newcol Exit ")}, u.Tag())
+	q := ed.tag.buf.End()
+	ed.tag.q0, ed.tag.q1 = q, q
 	return ed
 }
 
@@ -61,6 +63,8 @@ func (ed *Editor) NewColumn() *Column {
 	}
 	ed.cols = append(ed.cols, col)
 	col.tag = newText(col, &BasicBuffer{[]rune("New Delcol ")}, col.col.Tag())
+	q := col.tag.buf.End()
+	col.tag.q0, col.tag.q1 = q, q
 	col.col.OnWindowMoved(func(win *term.Window, from *term.Column) {
 		if from == col.col {
 			return
