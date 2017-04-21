@@ -70,7 +70,7 @@ func (win *Window) readFilename() {
 	var runes []rune
 	var p int64
 	for {
-		r := win.tag.ReadRuneAt(p)
+		r := win.tag.readRuneAt(p)
 		if r == 0 || r == EOF {
 			break
 		}

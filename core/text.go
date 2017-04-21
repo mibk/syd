@@ -65,7 +65,7 @@ func (t *Text) Selected() (q0, q1 int64) { return t.q0, t.q1 }
 func (t *Text) SelectionToString(q0, q1 int64) string {
 	s := make([]rune, 0, q1-q0)
 	for p := q0; p < q1; p++ {
-		s = append(s, t.ReadRuneAt(p))
+		s = append(s, t.readRuneAt(p))
 	}
 	return string(s)
 }
@@ -135,7 +135,7 @@ func (t *Text) PrevNewLine(p int64, n int) int64 {
 	return p
 }
 
-func (t *Text) ReadRuneAt(off int64) rune {
+func (t *Text) readRuneAt(off int64) rune {
 	r, _, err := t.buf.ReadRuneAt(off)
 	if err == io.EOF {
 		return EOF
@@ -221,14 +221,14 @@ func (t *Text) selectPath(q int64) (q0, q1 int64) {
 func (t *Text) spread(q int64, fn func(rune) bool) (q0, q1 int64) {
 	q0, q1 = q, q
 	for q0 > 0 {
-		r := t.ReadRuneAt(q0 - 1)
+		r := t.readRuneAt(q0 - 1)
 		if !fn(r) {
 			break
 		}
 		q0--
 	}
 	for {
-		r := t.ReadRuneAt(q1)
+		r := t.readRuneAt(q1)
 		if !fn(r) {
 			break
 		}
@@ -251,7 +251,7 @@ func (t *Text) handleKeyEvent(ev key.Event) {
 
 		var indent []rune
 		for ; ; p++ {
-			r := t.ReadRuneAt(p)
+			r := t.readRuneAt(p)
 			if r != ' ' && r != '\t' {
 				break
 			}
