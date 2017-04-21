@@ -1,10 +1,12 @@
 package core
 
 import (
+	"io"
 	"os"
 	"unicode/utf8"
 
 	"github.com/mibk/syd/ui/term"
+	"github.com/mibk/syd/undo"
 )
 
 const EOF = utf8.MaxRune + 1
@@ -15,7 +17,7 @@ type Window struct {
 	win      *term.Window
 	con      Content
 
-	buf  *UndoBuffer
+	buf  *undo.Buffer
 	tag  *Text
 	body *Text
 }
@@ -44,32 +46,21 @@ func (win *Window) Close() error {
 	return win.con.Close()
 }
 
+const maxInt64 = 1<<63 - 1
+
 func (win *Window) saveFile() {
 	if win.filename == "" {
 		win.readFilename()
 	}
-	// TODO: Read bytes directly from the undo.Buffer.
+
 	// TODO: Don't use '~' suffix, make saving safer.
 	f, err := os.Create(win.filename + "~")
 	if err != nil {
 		panic(err)
 	}
-
-	var buf [64]byte
-	var i int
-
-	for p := int64(0); ; p++ {
-		r := win.body.ReadRuneAt(p)
-		if r == EOF || len(buf[i:]) < utf8.UTFMax {
-			if _, err := f.Write(buf[:i]); err != nil {
-				panic(err)
-			}
-			i = 0
-		}
-		if r == EOF {
-			break
-		}
-		i += utf8.EncodeRune(buf[i:], r)
+	r := io.NewSectionReader(win.buf, 0, maxInt64)
+	if _, err := io.Copy(f, r); err != nil {
+		panic(err)
 	}
 	f.Close()
 

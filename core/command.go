@@ -90,7 +90,7 @@ func execute(ctx cmdContext, command string) {
 			win.body.Select(q0, q0+int64(utf8.RuneCountInString(s)))
 
 			// TODO: Come up with a better solution
-			win.buf.buf.Commit()
+			win.buf.Commit()
 		}
 	}
 }
