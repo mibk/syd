@@ -1,6 +1,7 @@
 package core
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"unicode/utf8"
@@ -20,6 +21,9 @@ type Window struct {
 	buf  *undo.Buffer
 	tag  *Text
 	body *Text
+
+	// used by Read and flush methods
+	insertbuf bytes.Buffer
 }
 
 func (win *Window) SetFilename(filename string) {
@@ -44,6 +48,21 @@ func (win *Window) Close() error {
 		ed.errWin = nil
 	}
 	return win.con.Close()
+}
+
+func (win *Window) Write(b []byte) (n int, err error) {
+	return win.insertbuf.Write(b)
+}
+
+func (win *Window) flush() {
+	s := win.insertbuf.String()
+	win.insertbuf.Reset()
+	q := win.body.q0
+	win.body.Insert(s)
+	win.body.Select(q, q+int64(utf8.RuneCountInString(s)))
+
+	// TODO: Come up with a better solution?
+	win.buf.Commit()
 }
 
 const maxInt64 = 1<<63 - 1

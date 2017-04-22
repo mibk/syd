@@ -1,11 +1,10 @@
 package core
 
 import (
-	"bytes"
+	"fmt"
 	"io"
 	"os/exec"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/mibk/syd/ui"
 )
@@ -65,25 +64,24 @@ func execute(ctx cmdContext, command string) {
 	}
 }
 
+type writeFlusher interface {
+	io.Writer
+	flush()
+}
+
 func shell(ctx cmdContext, command string) {
 	ed := ctx.editor()
-	if ed.errWin == nil {
-		ed.errWin = ed.recentCol().NewWindow()
-		ed.errWin.SetFilename("+Errors")
-		// TODO: This is just a hack because one
-		// cannot write to a window until this method
-		// is at least once called. Remove it.
-		ed.errWin.win.Clear()
-	}
-	wout := ed.errWin
 
 	var stdin io.Reader
+	stderr := ed.stderr()
+	defer stderr.flush()
+	stdout := stderr
+
 	if command[0] == '|' {
 		win, ok := ctx.window()
 		if !ok {
-			// TODO: Just print to +Errors window (like the rest of
-			// the panics).
-			panic("no current window")
+			fmt.Fprintln(stderr, "no current window")
+			return
 		}
 		command = command[1:]
 
@@ -92,31 +90,17 @@ func shell(ctx cmdContext, command string) {
 		q0, q1 := win.body.Selected()
 		selected := win.body.SelectionToString(q0, q1)
 		stdin = strings.NewReader(selected)
-		wout = win
-	} else {
-		q := wout.body.buf.End()
-		wout.body.q0, wout.body.q1 = q, q
+		stdout = win
 	}
 
-	var buf bytes.Buffer
 	cmd := exec.Command(command)
 	cmd.Stdin = stdin
-	cmd.Stdout = &buf
-	// TODO: Redirect stderr somewhere.
-	switch err := cmd.Run(); err := err.(type) {
-	case *exec.Error:
-		if err.Err == exec.ErrNotFound {
-			return
-		}
-		panic(err)
-	case error:
-		panic(err)
-	}
-	s := buf.String()
-	q := wout.body.q0
-	wout.body.Insert(s)
-	wout.body.Select(q, q+int64(utf8.RuneCountInString(s)))
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 
-	// TODO: Come up with a better solution
-	wout.buf.Commit()
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintln(stderr, err)
+	}
+
+	stdout.flush()
 }

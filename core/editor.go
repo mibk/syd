@@ -117,3 +117,37 @@ func (ed *Editor) deleteColumn(todel *Column) {
 func (ed *Editor) editor() *Editor         { return ed }
 func (ed *Editor) column() (*Column, bool) { return nil, false }
 func (ed *Editor) window() (*Window, bool) { return nil, false }
+
+func (ed *Editor) stderr() writeFlusher {
+	return &outputWriter{ed: ed}
+}
+
+type outputWriter struct {
+	ed    *Editor
+	ready bool
+}
+
+func (w *outputWriter) Write(b []byte) (n int, err error) {
+	ed := w.ed
+	if !w.ready {
+		w.ready = true
+		if ed.errWin == nil {
+			ed.errWin = ed.recentCol().NewWindow()
+			ed.errWin.SetFilename("+Errors")
+			// TODO: This is just a hack because one
+			// cannot write to a window until this method
+			// is at least once called. Remove it.
+			ed.errWin.win.Clear()
+		}
+		q := ed.errWin.body.buf.End()
+		ed.errWin.body.q0, ed.errWin.body.q1 = q, q
+	}
+	return ed.errWin.Write(b)
+}
+
+func (w *outputWriter) flush() {
+	if w.ready {
+		w.ed.errWin.flush()
+		w.ready = false
+	}
+}
