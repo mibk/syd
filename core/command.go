@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -60,7 +61,7 @@ func execute(ctx cmdContext, command string) {
 			win.buf.Redo()
 		}
 	default:
-		shell(ctx, command)
+		shellexec(ctx, command)
 	}
 }
 
@@ -69,7 +70,7 @@ type writeFlusher interface {
 	flush()
 }
 
-func shell(ctx cmdContext, command string) {
+func shellexec(ctx cmdContext, command string) {
 	ed := ctx.editor()
 
 	var stdin io.Reader
@@ -77,30 +78,152 @@ func shell(ctx cmdContext, command string) {
 	defer stderr.flush()
 	stdout := stderr
 
-	if command[0] == '|' {
+	pipeln, err := parse(command)
+	if err != nil {
+		if err != errEmptyCmd {
+			fmt.Fprintf(stderr, "syntax error: %v\n", err)
+		}
+		return
+	}
+
+	if pipeln.pipeInput || pipeln.pipeOutput {
 		win, ok := ctx.window()
 		if !ok {
 			fmt.Fprintln(stderr, "no current window")
 			return
 		}
-		command = command[1:]
-
-		// TODO: Implement this using io.Reader; read directly
-		// from the buffer.
-		q0, q1 := win.body.Selected()
-		selected := win.body.SelectionToString(q0, q1)
-		stdin = strings.NewReader(selected)
-		stdout = win
+		if pipeln.pipeInput {
+			// TODO: Implement this using io.Reader; read directly
+			// from the buffer.
+			q0, q1 := win.body.Selected()
+			selected := win.body.SelectionToString(q0, q1)
+			stdin = strings.NewReader(selected)
+		}
+		if pipeln.pipeOutput {
+			stdout = win
+		}
 	}
 
-	cmd := exec.Command(command)
-	cmd.Stdin = stdin
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-
-	if err := cmd.Run(); err != nil {
+	if err := pipeln.Exec(stdin, stdout, stderr); err != nil {
 		fmt.Fprintln(stderr, err)
+		return
 	}
 
 	stdout.flush()
+}
+
+var errEmptyCmd = errors.New("empty command")
+
+func parse(s string) (*pipeline, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return nil, errEmptyCmd
+	}
+	p := &pipeline{}
+	switch r := s[0]; r {
+	case '<', '|', '>':
+		s = s[1:]
+		p.pipeInput = true
+		p.pipeOutput = true
+		if r == '<' {
+			p.pipeInput = false
+		} else if r == '>' {
+			p.pipeOutput = false
+		}
+	}
+
+	var err error
+	p.pipe, err = parsePipe(s)
+	return p, err
+}
+
+func parsePipe(s string) (*pipe, error) {
+	p := &pipe{}
+
+	var err error
+	i := strings.LastIndexByte(s, '|')
+	if i == -1 {
+		p.cmd, err = parseCmd(s)
+		return p, err
+	}
+
+	p.cmd, err = parseCmd(s[i+1:])
+	if err != nil {
+		return nil, err
+	}
+	p.prev, err = parsePipe(s[:i])
+	if err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
+func parseCmd(s string) (*command, error) {
+	args := strings.Fields(s)
+	if len(args) == 0 {
+		return nil, errors.New("missing command")
+	}
+	return &command{cmd: args[0], args: args[1:]}, nil
+}
+
+type pipeline struct {
+	pipeInput  bool
+	pipeOutput bool
+	*pipe
+}
+
+type pipe struct {
+	cmd  *command
+	prev *pipe
+}
+
+func (p *pipe) Exec(stdin io.Reader, stdout, stderr io.Writer) error {
+	wc, err := p.cmd.Start(stdout, stderr)
+	if err != nil {
+		return err
+	}
+
+	if p.prev != nil {
+		if err := p.prev.Exec(stdin, wc, stderr); err != nil {
+			return err
+		}
+	} else if stdin != nil {
+		if _, err := io.Copy(wc, stdin); err != nil {
+			return err
+		}
+	}
+	return wc.Close()
+}
+
+type command struct {
+	cmd  string
+	args []string
+}
+
+func (c *command) Start(stdout, stderr io.Writer) (io.WriteCloser, error) {
+	cmd := exec.Command(c.cmd, c.args...)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
+
+	wc, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	return &procCloser{wc, cmd}, nil
+}
+
+type procCloser struct {
+	io.WriteCloser
+	cmd *exec.Cmd
+}
+
+func (pc *procCloser) Close() error {
+	if err := pc.WriteCloser.Close(); err != nil {
+		return err
+	}
+	return pc.cmd.Wait()
 }
