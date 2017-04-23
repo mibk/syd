@@ -321,7 +321,7 @@ func (b *Buffer) Undo() (off, n int64) {
 		c := a.changes[i]
 		swapSpans(c.new, c.old)
 		off = c.off
-		n = int64(c.old.len - c.new.len)
+		n = c.old.len - c.new.len
 	}
 	if n < 0 {
 		n = 0
@@ -351,7 +351,7 @@ func (b *Buffer) Redo() (off, n int64) {
 	for _, c := range a.changes {
 		swapSpans(c.old, c.new)
 		off = c.off
-		n = int64(c.new.len - c.old.len)
+		n = c.new.len - c.old.len
 	}
 	if n < 0 {
 		n = 0
@@ -443,13 +443,13 @@ type change struct {
 // performed by swapping out an existing span with a new one.
 type span struct {
 	start, end *piece // start/end of the span
-	len        int    // the sum of the lengths of the pieces which form this span
+	len        int64  // the sum of the lengths of the pieces which form this span
 }
 
 func newSpan(start, end *piece) span {
 	s := span{start: start, end: end}
 	for p := start; p != nil; p = p.next {
-		s.len += p.len()
+		s.len += int64(p.len())
 		if p == end {
 			break
 		}
