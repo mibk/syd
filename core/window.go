@@ -65,8 +65,6 @@ func (win *Window) flush() {
 	win.buf.Commit()
 }
 
-const maxInt64 = 1<<63 - 1
-
 func (win *Window) saveFile() {
 	if win.filename == "" {
 		win.readFilename()
@@ -77,7 +75,7 @@ func (win *Window) saveFile() {
 	if err != nil {
 		panic(err)
 	}
-	r := io.NewSectionReader(win.buf, 0, maxInt64)
+	r := io.NewSectionReader(win.buf, 0, win.buf.Size())
 	if _, err := io.Copy(f, r); err != nil {
 		panic(err)
 	}

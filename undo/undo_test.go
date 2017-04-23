@@ -241,8 +241,8 @@ func TestBufferSize(t *testing.T) {
 		1: {func() { b.insertString(0, " Like") }, 5},
 		2: {func() { b.insertString(0, " Colour") }, 12},
 		3: {func() { b.insertString(7, " You") }, 16},
-		4: {func() { b.Delete(5, 1); b.Commit() }, 15},
-		5: {func() { b.insertString(0, "Pink is the"); b.Commit() }, 26},
+		4: {func() { b.delete(5, 1) }, 15},
+		5: {func() { b.insertString(0, "Pink is the") }, 26},
 		6: {func() { b.Undo() }, 15},
 		7: {func() { b.Redo() }, 26},
 	}
