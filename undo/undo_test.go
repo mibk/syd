@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 )
 
@@ -251,6 +252,52 @@ func TestBufferSize(t *testing.T) {
 		tt.action()
 		if got := b.Size(); got != tt.want {
 			t.Fatalf("%d: got %d, want %d", i, got, tt.want)
+		}
+	}
+}
+
+func TestUndoRedoReturnedOffsets(t *testing.T) {
+	b := NewBuffer(nil)
+	insert := func(off, len int) {
+		b.insertString(off, strings.Repeat(".", len))
+	}
+	insert(0, 7)
+	insert(7, 5)
+	insert(12, 9)
+	b.delete(8, 8)
+	insert(3, 19)
+	b.delete(0, 20)
+
+	undo, redo := (*Buffer).Undo, (*Buffer).Redo
+	tests := []struct {
+		op      func(*Buffer) (off, n int64)
+		wantOff int64
+		wantN   int64
+	}{
+		0:  {redo, -1, 0},
+		1:  {undo, 0, 20},
+		2:  {undo, 3, 0},
+		3:  {undo, 8, 8},
+		4:  {undo, 12, 0},
+		5:  {undo, 7, 0},
+		6:  {undo, 0, 0},
+		7:  {undo, -1, 0},
+		8:  {redo, 0, 7},
+		9:  {redo, 7, 5},
+		10: {redo, 12, 9},
+		11: {redo, 8, 0},
+		12: {redo, 3, 19},
+		13: {redo, 0, 0},
+		14: {redo, -1, 0},
+	}
+
+	for i, tt := range tests {
+		off, n := tt.op(b)
+		if off != tt.wantOff {
+			t.Errorf("%d: got offset %d, want %d", i, off, tt.wantOff)
+		}
+		if n != tt.wantN {
+			t.Errorf("%d: got n %d, want %d", i, n, tt.wantN)
 		}
 	}
 }

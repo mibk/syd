@@ -306,23 +306,27 @@ func (b *Buffer) findPiece(off int64) (p *piece, offset int) {
 	return nil, 0
 }
 
-// Undo reverts the last performed action. It return the offset in bytes
-// at which the action occured. If there is no action to undo, Undo returns
-// -1.
-func (b *Buffer) Undo() int64 {
+// Undo reverts the last performed action. It returns the offset in bytes
+// at which the first change of the action occured and the number of bytes
+// the change added at off. If there is no action to undo, Undo returns -1
+// as the offset.
+func (b *Buffer) Undo() (off, n int64) {
 	b.Commit()
 	a := b.unshiftAction()
 	if a == nil {
-		return -1
+		return -1, 0
 	}
-	var off int64
+
 	for i := len(a.changes) - 1; i >= 0; i-- {
 		c := a.changes[i]
 		swapSpans(c.new, c.old)
 		off = c.off
+		n = int64(c.old.len - c.new.len)
 	}
-
-	return off
+	if n < 0 {
+		n = 0
+	}
+	return
 }
 
 func (b *Buffer) unshiftAction() *action {
@@ -333,21 +337,26 @@ func (b *Buffer) unshiftAction() *action {
 	return b.actions[b.head]
 }
 
-// Redo repeats the last undone action. It return the offset in bytes
-// at which the action occured. If there is no action to redo, Redo
-// returns -1.
-func (b *Buffer) Redo() int64 {
+// Redo repeats the last undone action. It returns the offset in bytes
+// at which the last change of the action occured and the number of bytes
+// the change added at off. If there is no action to redo, Redo returns -1
+// as the offset.
+func (b *Buffer) Redo() (off, n int64) {
 	b.Commit()
 	a := b.shiftAction()
 	if a == nil {
-		return -1
+		return -1, 0
 	}
-	var off int64
+
 	for _, c := range a.changes {
 		swapSpans(c.old, c.new)
 		off = c.off
+		n = int64(c.new.len - c.old.len)
 	}
-	return off
+	if n < 0 {
+		n = 0
+	}
+	return
 }
 
 func (b *Buffer) shiftAction() *action {
