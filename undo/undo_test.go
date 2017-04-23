@@ -231,6 +231,30 @@ func TestReader(t *testing.T) {
 	}
 }
 
+func TestBufferSize(t *testing.T) {
+	b := NewBuffer(nil)
+	tests := []struct {
+		action func()
+		want   int64
+	}{
+		0: {func() {}, 0},
+		1: {func() { b.insertString(0, " Like") }, 5},
+		2: {func() { b.insertString(0, " Colour") }, 12},
+		3: {func() { b.insertString(7, " You") }, 16},
+		4: {func() { b.Delete(5, 1); b.Commit() }, 15},
+		5: {func() { b.insertString(0, "Pink is the"); b.Commit() }, 26},
+		6: {func() { b.Undo() }, 15},
+		7: {func() { b.Redo() }, 26},
+	}
+
+	for i, tt := range tests {
+		tt.action()
+		if got := b.Size(); got != tt.want {
+			t.Fatalf("%d: got %d, want %d", i, got, tt.want)
+		}
+	}
+}
+
 func (b *Buffer) checkPiecesCnt(t *testing.T, expected int) {
 	if b.piecesCnt != expected {
 		t.Errorf("got %d pieces, want %d", b.piecesCnt, expected)

@@ -406,6 +406,17 @@ func (b *Buffer) ReadAt(data []byte, off int64) (n int, err error) {
 	return n, nil
 }
 
+// Size returns the size of the buffer in the current state. Size is the
+// number of bytes available for reading via ReadAt. Operations like Insert,
+// Delete, Undo and Redo modify the size.
+func (b *Buffer) Size() int64 {
+	var size int64
+	for p := b.begin; p != nil; p = p.next {
+		size += int64(p.len())
+	}
+	return size
+}
+
 // action is a list of changes which are used to undo/redo all modifications.
 type action struct {
 	changes []*change
