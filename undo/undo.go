@@ -75,7 +75,7 @@
 //
 // Undoing and redoing works with actions (action is a group of changes: insertations
 // and deletations). An action is represented by any operations between two calls of
-// CommitChange method. Anything that happens between these two calls is a part of that
+// Commit method. Anything that happens between these two calls is a part of that
 // particular action.
 package undo
 
