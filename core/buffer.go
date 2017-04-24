@@ -38,7 +38,7 @@ func (bb *BasicBuffer) Delete(q0, q1 int64) {
 func (bb *BasicBuffer) End() int64 { return int64(len(bb.runes)) }
 
 type UndoBuffer struct {
-	buf    *undo.Buffer
+	*undo.Buffer
 	offset int64 // offset in bytes
 	pos    int64 // position in runes
 
@@ -47,7 +47,7 @@ type UndoBuffer struct {
 
 func NewUndoBuffer(buf *undo.Buffer) *UndoBuffer {
 	return &UndoBuffer{
-		buf: buf,
+		Buffer: buf,
 	}
 }
 
@@ -71,7 +71,7 @@ func (b *UndoBuffer) ReadRuneAt(pos int64) (r rune, size int, err error) {
 
 func (b *UndoBuffer) Insert(q int64, s string) {
 	b.setPos(q)
-	b.buf.Insert(b.offset, []byte(s))
+	b.Buffer.Insert(b.offset, []byte(s))
 }
 
 func (b *UndoBuffer) Delete(q0, q1 int64) {
@@ -87,9 +87,21 @@ func (b *UndoBuffer) Delete(q0, q1 int64) {
 		size += int64(s)
 		q0++
 	}
-	if err := b.buf.Delete(offset, size); err != nil {
+	if err := b.Buffer.Delete(offset, size); err != nil {
 		panic(err)
 	}
+}
+
+func (b *UndoBuffer) Undo() (q0, q1 int64) { return b.findRange(b.Buffer.Undo()) }
+func (b *UndoBuffer) Redo() (q0, q1 int64) { return b.findRange(b.Buffer.Redo()) }
+
+func (b *UndoBuffer) findRange(off, n int64) (q0, q1 int64) {
+	if off == -1 {
+		return -1, -1
+	}
+	q0 = b.setOffset(off)
+	q1 = b.setOffset(off + n)
+	return
 }
 
 func (b *UndoBuffer) End() int64 {
@@ -108,20 +120,37 @@ func (b *UndoBuffer) setPos(pos int64) (offset int64) {
 		b.pos = 0
 	}
 	for {
-		if pos == b.pos {
+		if b.pos == pos {
 			return b.offset
 		}
-		_, s, err := b.readRuneAtByteOffset(b.offset)
-		if err != nil {
-			panic(err)
-		}
-		b.offset += int64(s)
-		b.pos++
+		b.advancePos()
 	}
 }
 
+func (b *UndoBuffer) setOffset(off int64) (pos int64) {
+	if off < b.offset {
+		b.offset = 0
+		b.pos = 0
+	}
+	for {
+		if b.offset >= off {
+			return b.pos
+		}
+		b.advancePos()
+	}
+}
+
+func (b *UndoBuffer) advancePos() {
+	_, size, err := b.readRuneAtByteOffset(b.offset)
+	if err != nil {
+		panic(err)
+	}
+	b.offset += int64(size)
+	b.pos++
+}
+
 func (b *UndoBuffer) readRuneAtByteOffset(off int64) (rune, int, error) {
-	n, err := b.buf.ReadAt(b.rb[:], off)
+	n, err := b.Buffer.ReadAt(b.rb[:], off)
 	if n == 0 && err != nil {
 		return 0, 0, err
 	}

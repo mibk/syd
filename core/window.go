@@ -7,7 +7,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/mibk/syd/ui/term"
-	"github.com/mibk/syd/undo"
 )
 
 const EOF = utf8.MaxRune + 1
@@ -18,7 +17,7 @@ type Window struct {
 	win      *term.Window
 	con      Content
 
-	buf  *undo.Buffer
+	buf  *UndoBuffer
 	tag  *Text
 	body *Text
 

@@ -56,9 +56,9 @@ func execute(ctx cmdContext, command string) {
 			win.saveFile()
 			win.buf.Clean()
 		case "Undo":
-			win.buf.Undo()
+			win.body.Select(win.buf.Undo())
 		case "Redo":
-			win.buf.Redo()
+			win.body.Select(win.buf.Redo())
 		}
 	default:
 		shellexec(ctx, command)
