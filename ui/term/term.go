@@ -29,6 +29,10 @@ var (
 // TODO: Move to package ui.
 type WindowMovedHandler func(win *Window, from *Column)
 
+type reloader interface {
+	reload() error
+}
+
 type UI struct {
 	screen        tcell.Screen
 	wasBtnPressed bool
@@ -56,6 +60,7 @@ func (t *UI) Init() error {
 	t.screen = sc
 
 	t.tag = &Text{
+		parent:  t,
 		frame:   new(Frame),
 		bgstyle: tagbg,
 		hlstyle: taghl,
@@ -80,7 +85,20 @@ func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
 func (t *UI) Tag() *Text { return t.tag }
 
-func (t *UI) Clear() {
+func (t *UI) reload() error {
+	t.clear()
+	t.tag.reload()
+	col := t.firstCol
+	for col != nil {
+		if err := col.reload(); err != nil {
+			return nil
+		}
+		col = col.nextCol
+	}
+	return nil
+}
+
+func (t *UI) clear() {
 	t.tag.width = t.width - 1
 	t.tag.height = t.height - 1
 	t.tag.clear()
@@ -148,6 +166,7 @@ func (t *UI) NewColumn() *Column {
 	}
 	col := &Column{ui: t, tag: tag}
 	tag.ui = t
+	tag.parent = col
 	if t.firstCol == nil {
 		t.firstCol = col
 	} else {
@@ -309,7 +328,9 @@ func (col *Column) NewWindow() *Window {
 		body: body,
 	}
 	tag.ui = col.ui
+	tag.parent = win
 	body.ui = col.ui
+	body.parent = win
 
 	if col.firstWin == nil {
 		if col.ui.activeText == nil {
@@ -328,7 +349,20 @@ func (col *Column) Delete() {
 	col.ui.removeCol(col)
 }
 
-func (col *Column) Clear() {
+func (col *Column) reload() error {
+	col.clear()
+	col.tag.reload()
+	win := col.firstWin
+	for win != nil {
+		if err := win.reload(); err != nil {
+			return err
+		}
+		win = win.nextWin
+	}
+	return nil
+}
+
+func (col *Column) clear() {
 	w := col.width()
 	h := col.height()
 	col.tag.width = w - 1
@@ -464,7 +498,18 @@ type Window struct {
 func (win *Window) Tag() *Text  { return win.tag }
 func (win *Window) Body() *Text { return win.body }
 
-func (win *Window) Clear() {
+func (win *Window) reload() error {
+	win.clear()
+	if err := win.tag.reload(); err != nil {
+		return err
+	}
+	if err := win.body.reload(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (win *Window) clear() {
 	w := win.col.width()
 	h := win.height()
 	win.tag.width = w - 1
@@ -524,9 +569,21 @@ func (win *Window) height() int {
 	return win.nextWin.y - win.y
 }
 
+type resetRuneReader interface {
+	// Reset resets the reader to the original offset.
+	Reset()
+	io.RuneReader
+}
+
 type Text struct {
 	ui    *UI
 	frame *Frame
+
+	// TODO: If text is reloaded, it might require reloading
+	// of the parent component (e.g. when Text represents tag
+	// and the tag changes the number of lines). Revalidate
+	// whether this is still true once the ui API settles down.
+	parent reloader
 
 	width, height int
 	x, y          int
@@ -542,6 +599,14 @@ type Text struct {
 
 	mouseEventHandler ui.MouseEventHandler
 	keyEventHandler   ui.KeyEventHandler
+
+	rr resetRuneReader
+}
+
+// Init initializes t so it can be safely used.
+func (t *Text) Init(rr resetRuneReader) {
+	// TODO: Come up with a better design.
+	t.rr = rr
 }
 
 // TODO: Probably remove.
@@ -576,7 +641,26 @@ func (t *Text) clear() {
 
 func (t *Text) Select(p0, p1 int) { t.cur.p0, t.cur.p1 = p0, p1 }
 
-func (t *Text) WriteRune(r rune) error {
+func (t *Text) Reload() error { return t.parent.reload() }
+
+func (t *Text) reload() error {
+	t.rr.Reset()
+	for {
+		r, _, err := t.rr.ReadRune()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+		if err := t.writeRune(r); err != nil {
+			break
+		}
+	}
+	return nil
+}
+
+func (t *Text) writeRune(r rune) error {
 	t.frame.lines[t.cur.y] = append(t.frame.lines[t.cur.y], r)
 	if r == '\t' {
 		t.cur.x += tabWidthForCol(t.cur.x)

@@ -24,6 +24,9 @@ type Text struct {
 	q0, q1    int64
 	selEnd    *int64
 	timestamp time.Time
+
+	// position for ReadRune
+	pp int64
 }
 
 func newText(ctx cmdContext, buf Buffer, tt *term.Text) *Text {
@@ -32,27 +35,25 @@ func newText(ctx cmdContext, buf Buffer, tt *term.Text) *Text {
 		buf:  buf,
 		text: tt,
 	}
+	tt.Init(t)
 	tt.OnMouseEvent(t.handleMouse)
 	tt.OnKeyEvent(t.handleKeyEvent)
 	return t
 }
 
-func (t *Text) loadText() {
+func (t *Text) Reset() {
+	t.pp = t.origin
+}
+
+func (t *Text) ReadRune() (r rune, size int, err error) {
+	t.pp++
+	return t.buf.ReadRuneAt(t.pp - 1)
+}
+
+func (t *Text) redraw() {
 	t.text.Select(int(t.q0-t.origin), int(t.q1-t.origin))
-
-	for p := t.origin; ; p++ {
-		r, _, err := t.buf.ReadRuneAt(p)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			panic(err)
-		}
-		if err := t.text.WriteRune(r); err == io.EOF {
-			break
-		} else if err != nil {
-			panic(err)
-		}
-
+	if err := t.text.Reload(); err != nil {
+		panic(err)
 	}
 }
 
@@ -78,7 +79,7 @@ func (t *Text) Select(q0, q1 int64) {
 	if t.q1 > t.origin+int64(t.text.Frame().Nchars()) {
 		oldOrg := t.origin
 		t.origin += int64(t.text.Frame().CharsUntilXY(0, 3))
-		t.loadText()
+		t.redraw()
 		if t.q1 > t.origin+int64(t.text.Frame().Nchars()) {
 			// There's no more content, get back.
 			t.origin = oldOrg
@@ -86,7 +87,7 @@ func (t *Text) Select(q0, q1 int64) {
 			if t.q0 > t.q1 {
 				t.q0 = t.q1
 			}
-			t.loadText()
+			t.redraw()
 		}
 	}
 	t.checkVisibility()
@@ -110,6 +111,7 @@ func (t *Text) DeleteSel() {
 }
 
 func (t *Text) checkVisibility() {
+	t.redraw()
 	if t.q0 < t.origin || t.q0 > t.origin+int64(t.text.Frame().Nchars())+1 {
 		t.origin = t.PrevNewLine(t.q0, 3)
 	}
@@ -340,7 +342,7 @@ func down(t *Text) {
 func findQ(t *Text, line int) int64 {
 	if line < 0 {
 		t.SetOrigin(t.PrevNewLine(t.Origin(), -line))
-		t.loadText()
+		t.redraw()
 		line = 0
 	} else if line > t.text.Frame().Lines()-1 {
 		_, h := t.text.Size()
@@ -349,10 +351,10 @@ func findQ(t *Text, line int) int64 {
 			oldOrg := t.Origin()
 			l := t.text.Frame().Lines()
 			t.SetOrigin(oldOrg + int64(t.text.Frame().CharsUntilXY(0, i)))
-			t.loadText()
+			t.redraw()
 			if t.text.Frame().Lines() < l {
 				t.SetOrigin(oldOrg)
-				t.loadText()
+				t.redraw()
 			}
 		}
 		line = t.text.Frame().Lines() - 1

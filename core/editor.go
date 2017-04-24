@@ -40,10 +40,9 @@ func NewEditor(u *term.UI) *Editor {
 
 func (ed *Editor) Main() {
 	for !ed.shouldQuit {
-		ed.ui.Clear()
-		ed.tag.loadText()
+		ed.tag.redraw()
 		for _, col := range ed.cols {
-			col.Refresh()
+			col.redraw()
 		}
 		ed.ui.Flush()
 		ev := <-ui.Events
@@ -134,10 +133,6 @@ func (w *outputWriter) Write(b []byte) (n int, err error) {
 		if ed.errWin == nil {
 			ed.errWin = ed.recentCol().NewWindow()
 			ed.errWin.SetFilename("+Errors")
-			// TODO: This is just a hack because one
-			// cannot write to a window until this method
-			// is at least once called. Remove it.
-			ed.errWin.win.Clear()
 		}
 		q := ed.errWin.body.buf.End()
 		ed.errWin.body.q0, ed.errWin.body.q1 = q, q

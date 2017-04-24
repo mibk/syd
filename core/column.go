@@ -14,11 +14,10 @@ type Column struct {
 	col  *term.Column
 }
 
-func (col *Column) Refresh() {
-	col.col.Clear()
-	col.tag.loadText()
+func (col *Column) redraw() {
+	col.tag.redraw()
 	for _, win := range col.wins {
-		win.LoadText()
+		win.redraw()
 	}
 }
 

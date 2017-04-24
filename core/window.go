@@ -34,11 +34,10 @@ func (win *Window) SetFilename(filename string) {
 
 func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO: delete
 
-func (win *Window) LoadText() {
-	win.win.Clear()
+func (win *Window) redraw() {
 	win.win.SetDirty(win.buf.Dirty())
-	win.tag.loadText()
-	win.body.loadText()
+	win.tag.redraw()
+	win.body.redraw()
 }
 
 func (win *Window) Close() error {
