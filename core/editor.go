@@ -3,7 +3,6 @@ package core
 import (
 	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/ui/term"
-	"github.com/mibk/syd/vi"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -11,7 +10,6 @@ import (
 type Editor struct {
 	ui         *term.UI
 	events     chan ui.Event
-	vi         *vi.Parser
 	shouldQuit bool
 
 	tag *Text

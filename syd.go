@@ -31,8 +31,3 @@ func main() {
 	}
 	ed.Main()
 }
-
-const (
-	ModeNormal = iota
-	ModeInsert
-)
