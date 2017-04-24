@@ -69,33 +69,6 @@ func (b *UndoBuffer) ReadRuneAt(pos int64) (r rune, size int, err error) {
 	}
 }
 
-func (b *UndoBuffer) setPos(pos int64) (offset int64) {
-	if pos < b.pos {
-		b.offset = 0
-		b.pos = 0
-	}
-	for {
-		if pos == b.pos {
-			return b.offset
-		}
-		_, s, err := b.readRuneAtByteOffset(b.offset)
-		if err != nil {
-			panic(err)
-		}
-		b.offset += int64(s)
-		b.pos++
-	}
-}
-
-func (b *UndoBuffer) readRuneAtByteOffset(off int64) (rune, int, error) {
-	n, err := b.buf.ReadAt(b.rb[:], off)
-	if n == 0 && err != nil {
-		return 0, 0, err
-	}
-	r, s := utf8.DecodeRune(b.rb[:n])
-	return r, s, nil
-}
-
 func (b *UndoBuffer) Insert(q int64, s string) {
 	b.setPos(q)
 	b.buf.Insert(b.offset, []byte(s))
@@ -127,4 +100,31 @@ func (b *UndoBuffer) End() int64 {
 		}
 	}
 	return p
+}
+
+func (b *UndoBuffer) setPos(pos int64) (offset int64) {
+	if pos < b.pos {
+		b.offset = 0
+		b.pos = 0
+	}
+	for {
+		if pos == b.pos {
+			return b.offset
+		}
+		_, s, err := b.readRuneAtByteOffset(b.offset)
+		if err != nil {
+			panic(err)
+		}
+		b.offset += int64(s)
+		b.pos++
+	}
+}
+
+func (b *UndoBuffer) readRuneAtByteOffset(off int64) (rune, int, error) {
+	n, err := b.buf.ReadAt(b.rb[:], off)
+	if n == 0 && err != nil {
+		return 0, 0, err
+	}
+	r, s := utf8.DecodeRune(b.rb[:n])
+	return r, s, nil
 }
