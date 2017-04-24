@@ -101,6 +101,7 @@ func shellexec(ctx cmdContext, command string) {
 		}
 		if pipeln.pipeOutput {
 			stdout = win
+			defer stdout.flush()
 		}
 	}
 
@@ -108,8 +109,6 @@ func shellexec(ctx cmdContext, command string) {
 		fmt.Fprintln(stderr, err)
 		return
 	}
-
-	stdout.flush()
 }
 
 var errEmptyCmd = errors.New("empty command")
