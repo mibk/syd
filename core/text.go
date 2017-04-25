@@ -76,20 +76,6 @@ func (t *Text) Select(q0, q1 int64) {
 		return
 	}
 	t.q0, t.q1 = q0, q1
-	if t.q1 > t.origin+int64(t.text.Frame().Nchars()) {
-		oldOrg := t.origin
-		t.origin += int64(t.text.Frame().CharsUntilXY(0, 3))
-		t.redraw()
-		if t.q1 > t.origin+int64(t.text.Frame().Nchars()) {
-			// There's no more content, get back.
-			t.origin = oldOrg
-			t.q1--
-			if t.q0 > t.q1 {
-				t.q0 = t.q1
-			}
-			t.redraw()
-		}
-	}
 	t.checkVisibility()
 }
 
