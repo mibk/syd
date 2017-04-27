@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"regexp"
 	"unicode/utf8"
 
 	"github.com/mibk/syd/ui/term"
@@ -99,6 +100,21 @@ func (win *Window) readFilename() {
 		return
 	}
 	win.filename = string(runes)
+}
+
+func (win *Window) findNextExactMatch(s string) {
+	rx := regexp.MustCompile(regexp.QuoteMeta(s))
+
+	body := win.body
+	buf := win.buf
+	for _, q := range []int64{body.q1, 0} {
+		r, off := buf.RuneReaderFrom(q)
+		if loc := rx.FindReaderIndex(r); loc != nil {
+			q0, q1 := buf.FindRange(off+int64(loc[0]), int64(loc[1]-loc[0]))
+			body.Select(q0, q1)
+			return
+		}
+	}
 }
 
 func (win *Window) editor() (ed *Editor)           { return win.col.ed }

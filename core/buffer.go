@@ -69,6 +69,13 @@ func (b *UndoBuffer) ReadRuneAt(pos int64) (r rune, size int, err error) {
 	}
 }
 
+// RuneReaderFrom returns an io.RuneReader and the offset in bytes
+// that corresponds to q.
+func (b *UndoBuffer) RuneReaderFrom(q int64) (r io.RuneReader, off int64) {
+	off = b.setPos(q)
+	return &posRuneReader{b: b, q: q}, off
+}
+
 func (b *UndoBuffer) Insert(q int64, s string) {
 	b.setPos(q)
 	b.Buffer.Insert(b.offset, []byte(s))
@@ -92,10 +99,10 @@ func (b *UndoBuffer) Delete(q0, q1 int64) {
 	}
 }
 
-func (b *UndoBuffer) Undo() (q0, q1 int64) { return b.findRange(b.Buffer.Undo()) }
-func (b *UndoBuffer) Redo() (q0, q1 int64) { return b.findRange(b.Buffer.Redo()) }
+func (b *UndoBuffer) Undo() (q0, q1 int64) { return b.FindRange(b.Buffer.Undo()) }
+func (b *UndoBuffer) Redo() (q0, q1 int64) { return b.FindRange(b.Buffer.Redo()) }
 
-func (b *UndoBuffer) findRange(off, n int64) (q0, q1 int64) {
+func (b *UndoBuffer) FindRange(off, n int64) (q0, q1 int64) {
 	if off == -1 {
 		return -1, -1
 	}
@@ -156,4 +163,15 @@ func (b *UndoBuffer) readRuneAtByteOffset(off int64) (rune, int, error) {
 	}
 	r, s := utf8.DecodeRune(b.rb[:n])
 	return r, s, nil
+}
+
+type posRuneReader struct {
+	b *UndoBuffer
+	q int64
+}
+
+func (rr *posRuneReader) ReadRune() (r rune, size int, err error) {
+	r, size, err = rr.b.ReadRuneAt(rr.q)
+	rr.q++
+	return
 }

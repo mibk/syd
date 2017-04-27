@@ -138,27 +138,39 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 	switch ev.Direction {
 	case mouse.DirPress:
 		if ev.Button == mouse.ButtonMiddle {
-			var q0, q1 int64
-			if q >= t.q0 && q < t.q1 {
-				q0, q1 = t.q0, t.q1
-			} else {
-				q0, q1 = t.selectPath(q)
+			cmd := t.selected(q)
+			if cmd == "" {
+				cmd = t.selectPath(q)
 			}
-			cmd := t.SelectionToString(q0, q1)
 			execute(t.ctx, cmd)
 			return
 		} else if ev.Button == mouse.ButtonRight {
-			path := t.SelectionToString(t.selectPath(q))
+			query := t.selected(q)
+
 			// TODO: Don't require being in a column context. Just
 			// open the file in the most recent column (using similar
 			// heuristic as in Acme).
 			if col, ok := t.ctx.column(); ok {
+				path := query
+				if path == "" {
+					path = t.selectPath(q)
+				}
 				if _, ok := col.ed.wins[path]; ok {
 					return
 				}
 				if _, err := os.Stat(path); err == nil {
 					col.NewWindowFile(path)
+					return
 				}
+			}
+
+			if win, ok := t.ctx.window(); ok {
+				if query == "" {
+					q0, q1 := t.dblclick(q)
+					t.Select(q0, q1)
+					query = t.SelectionToString(q0, q1)
+				}
+				win.findNextExactMatch(query)
 			}
 			return
 		}
@@ -198,12 +210,22 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 	}
 }
 
+// selected returns the selection if q is between
+// t.q0 and t.q1, otherwise it returns an empty
+// string.
+func (t *Text) selected(q int64) string {
+	if q >= t.q0 && q < t.q1 {
+		return t.SelectionToString(t.q0, t.q1)
+	}
+	return ""
+}
+
 func (t *Text) dblclick(q int64) (q0, q1 int64) {
 	return t.spread(q, isAlphaNumeric)
 }
 
-func (t *Text) selectPath(q int64) (q0, q1 int64) {
-	return t.spread(q, isPath)
+func (t *Text) selectPath(q int64) string {
+	return t.SelectionToString(t.spread(q, isPath))
 }
 
 func (t *Text) spread(q int64, fn func(rune) bool) (q0, q1 int64) {
