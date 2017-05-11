@@ -32,8 +32,6 @@ func (win *Window) SetFilename(filename string) {
 	win.col.ed.wins[filename] = win
 }
 
-func (win *Window) Frame() *term.Frame { return win.body.text.Frame() } // TODO: delete
-
 func (win *Window) redraw() {
 	win.win.SetDirty(win.buf.Dirty())
 	win.tag.redraw()
