@@ -26,9 +26,6 @@ var (
 	testbg = tcell.StyleDefault.Background(tcell.GetColor("#ffe0ff"))
 )
 
-// TODO: Move to package ui.
-type WindowMovedHandler func(win *Window, from *Column)
-
 type reloader interface {
 	reload() error
 }
@@ -83,7 +80,7 @@ func (t *UI) Close() error {
 
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
-func (t *UI) Tag() *Text { return t.tag }
+func (t *UI) Tag() ui.Text { return t.tag }
 
 func (t *UI) reload() error {
 	t.clear()
@@ -158,7 +155,7 @@ func (t *UI) Push_Key_Event(ev key.Event) {
 	t.activeText.keyEventHandler(ev)
 }
 
-func (t *UI) NewColumn() *Column {
+func (t *UI) NewColumn() ui.Column {
 	tag := &Text{
 		frame:   new(Frame),
 		bgstyle: tagbg,
@@ -251,15 +248,15 @@ type Column struct {
 
 	tag *Text
 
-	winMovedHandler WindowMovedHandler
+	winMovedHandler ui.WindowMovedHandler
 
 	firstWin *Window
 	nextCol  *Column
 }
 
-func (col *Column) Tag() *Text { return col.tag }
+func (col *Column) Tag() ui.Text { return col.tag }
 
-func (col *Column) OnWindowMoved(h WindowMovedHandler) {
+func (col *Column) OnWindowMoved(h ui.WindowMovedHandler) {
 	col.winMovedHandler = h
 }
 
@@ -310,7 +307,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 	}
 }
 
-func (col *Column) NewWindow() *Window {
+func (col *Column) NewWindow() ui.Window {
 	tag := &Text{
 		frame:   new(Frame),
 		bgstyle: tagbg,
@@ -495,8 +492,8 @@ type Window struct {
 	nextWin *Window
 }
 
-func (win *Window) Tag() *Text  { return win.tag }
-func (win *Window) Body() *Text { return win.body }
+func (win *Window) Tag() ui.Text  { return win.tag }
+func (win *Window) Body() ui.Text { return win.body }
 
 func (win *Window) reload() error {
 	win.clear()
@@ -569,12 +566,6 @@ func (win *Window) height() int {
 	return win.nextWin.y - win.y
 }
 
-type resetRuneReader interface {
-	// Reset resets the reader to the original offset.
-	Reset()
-	io.RuneReader
-}
-
 type Text struct {
 	ui    *UI
 	frame *Frame
@@ -600,11 +591,11 @@ type Text struct {
 	mouseEventHandler ui.MouseEventHandler
 	keyEventHandler   ui.KeyEventHandler
 
-	rr resetRuneReader
+	rr ui.ResetRuneReader
 }
 
 // Init initializes t so it can be safely used.
-func (t *Text) Init(rr resetRuneReader) {
+func (t *Text) Init(rr ui.ResetRuneReader) {
 	// TODO: Come up with a better design.
 	t.rr = rr
 }
@@ -762,7 +753,7 @@ func (t *Text) fill() {
 	}
 }
 
-func (t *Text) Frame() *Frame { return t.frame }
+func (t *Text) Frame() ui.Frame { return t.frame }
 
 type Frame struct {
 	lines   [][]rune

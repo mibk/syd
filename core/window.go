@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"unicode/utf8"
 
-	"github.com/mibk/syd/ui/term"
+	"github.com/mibk/syd/ui"
 )
 
 const EOF = utf8.MaxRune + 1
@@ -15,7 +15,7 @@ const EOF = utf8.MaxRune + 1
 type Window struct {
 	col      *Column
 	filename string
-	win      *term.Window
+	win      ui.Window
 	con      Content
 
 	buf  *UndoBuffer

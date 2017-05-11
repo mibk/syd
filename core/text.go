@@ -12,12 +12,11 @@ import (
 
 	"github.com/atotto/clipboard"
 	"github.com/mibk/syd/ui"
-	"github.com/mibk/syd/ui/term"
 )
 
 type Text struct {
 	ctx  cmdContext
-	text *term.Text
+	text ui.Text
 	buf  Buffer
 
 	origin    int64
@@ -29,7 +28,7 @@ type Text struct {
 	pp int64
 }
 
-func newText(ctx cmdContext, buf Buffer, tt *term.Text) *Text {
+func newText(ctx cmdContext, buf Buffer, tt ui.Text) *Text {
 	t := &Text{
 		ctx:  ctx,
 		buf:  buf,

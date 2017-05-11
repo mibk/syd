@@ -2,13 +2,12 @@ package core
 
 import (
 	"github.com/mibk/syd/ui"
-	"github.com/mibk/syd/ui/term"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 )
 
 type Editor struct {
-	ui         *term.UI
+	ui         ui.UI
 	events     chan ui.Event
 	shouldQuit bool
 
@@ -23,7 +22,7 @@ type Editor struct {
 	mode int
 }
 
-func NewEditor(u *term.UI) *Editor {
+func NewEditor(u ui.UI) *Editor {
 	ed := &Editor{
 		ui:     u,
 		events: make(chan ui.Event),
@@ -66,7 +65,7 @@ func (ed *Editor) NewColumn() *Column {
 	col.tag = newText(col, &BasicBuffer{[]rune("New Delcol ")}, col.col.Tag())
 	q := col.tag.buf.End()
 	col.tag.q0, col.tag.q1 = q, q
-	col.col.OnWindowMoved(func(win *term.Window, from *term.Column) {
+	col.col.OnWindowMoved(func(win ui.Window, from ui.Column) {
 		if from == col.col {
 			return
 		}
@@ -92,7 +91,7 @@ func (ed *Editor) recentCol() *Column {
 	return ed.cols[0]
 }
 
-func (ed *Editor) findColumn(tofind *term.Column) *Column {
+func (ed *Editor) findColumn(tofind ui.Column) *Column {
 	for _, col := range ed.cols {
 		if col.col == tofind {
 			return col

@@ -3,7 +3,7 @@ package core
 import (
 	"os"
 
-	"github.com/mibk/syd/ui/term"
+	"github.com/mibk/syd/ui"
 	"github.com/mibk/syd/undo"
 )
 
@@ -11,7 +11,7 @@ type Column struct {
 	ed   *Editor
 	tag  *Text
 	wins []*Window
-	col  *term.Column
+	col  ui.Column
 }
 
 func (col *Column) redraw() {
@@ -66,7 +66,7 @@ func (col *Column) deleteWindow(todel *Window) {
 	panic("window not found")
 }
 
-func (col *Column) removeWindow(todel *term.Window) *Window {
+func (col *Column) removeWindow(todel ui.Window) *Window {
 	for i, win := range col.wins {
 		if win.win == todel {
 			col.wins = append(col.wins[:i], col.wins[i+1:]...)
