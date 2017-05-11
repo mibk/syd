@@ -46,6 +46,9 @@ func (win *Window) Close() error {
 	if ed := win.col.ed; ed.errWin == win {
 		ed.errWin = nil
 	}
+	if win.filename != "" {
+		delete(win.col.ed.wins, win.filename)
+	}
 	return win.con.Close()
 }
 
