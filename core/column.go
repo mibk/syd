@@ -47,9 +47,10 @@ func (col *Column) NewWindowFile(filename string) (*Window, error) {
 }
 
 func (col *Column) newWindow(con Content) *Window {
-	window := col.col.NewWindow()
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
-	win := &Window{col: col, win: window, con: con, buf: buf}
+	win := &Window{col: col, con: con, buf: buf}
+	window := col.col.NewWindow(win)
+	win.win = window
 	win.tag = newText(win, &BasicBuffer{[]rune("\x00Del Put Undo Redo ")}, window.Tag())
 	win.body = newText(win, buf, window.Body())
 	col.wins = append(col.wins, win)

@@ -1,6 +1,7 @@
 package term
 
 import (
+	"fmt"
 	"io"
 	"unicode"
 	"unicode/utf8"
@@ -9,6 +10,7 @@ import (
 	"golang.org/x/mobile/event/mouse"
 
 	"github.com/gdamore/tcell"
+	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/ui"
 )
 
@@ -307,7 +309,8 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 	}
 }
 
-func (col *Column) NewWindow() ui.Window {
+func (col *Column) NewWindow(m ui.Model) ui.Window {
+	model := m.(*core.Window)
 	tag := &Text{
 		frame:   new(Frame),
 		bgstyle: tagbg,
@@ -319,10 +322,11 @@ func (col *Column) NewWindow() ui.Window {
 		hlstyle: bodyhl,
 	}
 	win := &Window{
-		col:  col,
-		y:    0,
-		tag:  tag,
-		body: body,
+		model: model,
+		col:   col,
+		y:     0,
+		tag:   tag,
+		body:  body,
 	}
 	tag.ui = col.ui
 	tag.parent = win
@@ -480,14 +484,13 @@ func (col *Column) y() int      { return col.ui.y() + len(col.tag.frame.lines) }
 func (col *Column) height() int { return col.ui.height - col.y() }
 
 type Window struct {
-	col *Column
+	col   *Column
+	model *core.Window
 
 	y int
 
 	tag  *Text
 	body *Text
-
-	dirty bool
 
 	nextWin *Window
 }
@@ -518,12 +521,13 @@ func (win *Window) clear() {
 	win.body.clear()
 }
 
-func (win *Window) SetDirty(dirty bool) {
-	win.dirty = dirty
-}
-
-func (win *Window) Delete() {
-	win.col.removeWin(win)
+func (win *Window) Update(msg ui.Message) {
+	switch msg {
+	case ui.Delete:
+		win.col.removeWin(win)
+	default:
+		panic(fmt.Sprintf("unexpected message: %v", msg))
+	}
 }
 
 func (win *Window) flush() {
@@ -537,7 +541,7 @@ func (win *Window) flush() {
 	y := 0
 	for ; y < h; y++ {
 		bg := win.tag.bgstyle
-		if y == 0 && win.dirty {
+		if y == 0 && win.model.Dirty() {
 			bg = dirtystyle
 		}
 		win.col.ui.screen.SetContent(win.col.x, winy+y, ' ', nil, bg)

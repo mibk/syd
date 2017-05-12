@@ -15,7 +15,7 @@ const EOF = utf8.MaxRune + 1
 type Window struct {
 	col      *Column
 	filename string
-	win      ui.Window
+	win      ui.Updater
 	con      Content
 
 	buf  *UndoBuffer
@@ -32,14 +32,17 @@ func (win *Window) SetFilename(filename string) {
 	win.col.ed.wins[filename] = win
 }
 
+func (win *Window) Dirty() bool {
+	return win.buf.Dirty()
+}
+
 func (win *Window) redraw() {
-	win.win.SetDirty(win.buf.Dirty())
 	win.tag.redraw()
 	win.body.redraw()
 }
 
 func (win *Window) Close() error {
-	win.win.Delete()
+	win.win.Update(ui.Delete)
 	win.col.deleteWindow(win)
 	if ed := win.col.ed; ed.errWin == win {
 		ed.errWin = nil

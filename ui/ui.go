@@ -16,6 +16,17 @@ const (
 	ColQ1 = -2
 )
 
+type Message int
+
+const (
+	_ Message = iota
+	Delete
+)
+
+type Updater interface {
+	Update(Message)
+}
+
 // The following interfaces are for refactoring purposes only.
 
 type WindowMovedHandler func(win Window, from Column)
@@ -35,15 +46,14 @@ type UI interface {
 }
 
 type Column interface {
-	NewWindow() Window
+	NewWindow(Model) Window
 	Delete()
 	Tag() Text
 	OnWindowMoved(WindowMovedHandler)
 }
 
 type Window interface {
-	SetDirty(bool)
-	Delete()
+	Updater
 	Tag() Text
 	Body() Text
 }
@@ -66,3 +76,5 @@ type Frame interface {
 	WantCol() int
 	SetWantCol(int)
 }
+
+type Model interface{}
