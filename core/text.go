@@ -135,69 +135,20 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 	q := t.origin + int64(p)
 	switch ev.Direction {
 	case mouse.DirPress:
-		if ev.Button == mouse.ButtonMiddle {
-			cmd := t.selected(q)
-			if cmd == "" {
-				cmd = t.selectPath(q)
-			}
-			execute(t.ctx, cmd)
-			return
-		} else if ev.Button == mouse.ButtonRight {
-			query := t.selected(q)
-
-			// TODO: Don't require being in a column context. Just
-			// open the file in the most recent column (using similar
-			// heuristic as in Acme).
-			if col, ok := t.ctx.column(); ok {
-				path := query
-				if path == "" {
-					path = t.selectPath(q)
-				}
-				if _, ok := col.ed.wins[path]; ok {
-					return
-				}
-				if _, err := os.Stat(path); err == nil {
-					col.NewWindowFile(path)
-					return
-				}
-			}
-
-			if win, ok := t.ctx.window(); ok {
-				if query == "" {
-					q0, q1 := t.dblclick(q)
-					t.Select(q0, q1)
-					query = t.SelectionToString(q0, q1)
-				}
-				win.findNextExactMatch(query)
-			}
-			return
+		switch {
+		case ev.Button == mouse.ButtonMiddle:
+			t.ExecuteUnderCursor(q)
+		case ev.Button == mouse.ButtonRight:
+			t.Plumb(q)
+		case time.Since(t.timestamp) < 300*time.Millisecond:
+			t.SelectUnderCursor(q)
+		default:
+			t.StartSel(q)
 		}
-
-		if time.Since(t.timestamp) < 300*time.Millisecond {
-			t.Select(t.dblclick(q))
-			t.selEnd = nil
-			return
-		}
-		t.q0, t.q1 = q, q
-		t.selEnd = &t.q1
-		t.timestamp = time.Now()
-		// TODO: Get rid of SetWantCol.
-		t.text.Frame().SetWantCol(ui.ColQ0)
 	case mouse.DirRelease:
-		t.selEnd = nil
+		t.StopSel()
 	case mouse.DirNone:
-		if t.selEnd == nil {
-			return
-		}
-		*t.selEnd = q
-		if t.q0 > t.q1 {
-			t.q0, t.q1 = t.q1, t.q0
-			if t.selEnd == &t.q0 {
-				t.selEnd = &t.q1
-			} else {
-				t.selEnd = &t.q0
-			}
-		}
+		t.MoveSel(q)
 	case mouse.DirStep:
 		switch ev.Button {
 		case mouse.ButtonWheelUp:
@@ -205,6 +156,74 @@ func (t *Text) handleMouse(p int, ev mouse.Event) {
 		case mouse.ButtonWheelDown:
 			t.ScrollDown(3)
 		}
+	}
+}
+
+func (t *Text) StartSel(q int64) {
+	t.q0, t.q1 = q, q
+	t.selEnd = &t.q1
+	t.timestamp = time.Now()
+	// TODO: Get rid of SetWantCol.
+	t.text.Frame().SetWantCol(ui.ColQ0)
+}
+
+func (t *Text) MoveSel(q int64) {
+	if t.selEnd == nil {
+		return
+	}
+	*t.selEnd = q
+	if t.q0 > t.q1 {
+		t.q0, t.q1 = t.q1, t.q0
+		if t.selEnd == &t.q0 {
+			t.selEnd = &t.q1
+		} else {
+			t.selEnd = &t.q0
+		}
+	}
+}
+
+func (t *Text) StopSel() { t.selEnd = nil }
+
+func (t *Text) SelectUnderCursor(q int64) {
+	t.Select(t.dblclick(q))
+	t.selEnd = nil
+}
+
+func (t *Text) ExecuteUnderCursor(q int64) {
+	cmd := t.selected(q)
+	if cmd == "" {
+		cmd = t.selectPath(q)
+	}
+	execute(t.ctx, cmd)
+}
+
+func (t *Text) Plumb(q int64) {
+	query := t.selected(q)
+
+	// TODO: Don't require being in the column context. Just
+	// open the file in the most recent column (using similar
+	// heuristic as in Acme).
+	if col, ok := t.ctx.column(); ok {
+		path := query
+		if path == "" {
+			path = t.selectPath(q)
+		}
+		if _, ok := col.ed.wins[path]; ok {
+			return
+		}
+		if _, err := os.Stat(path); err == nil {
+			col.NewWindowFile(path)
+			return
+		}
+	}
+
+	if win, ok := t.ctx.window(); ok {
+		if query == "" {
+			q0, q1 := t.dblclick(q)
+			t.Select(q0, q1)
+			query = t.SelectionToString(q0, q1)
+		}
+		win.findNextExactMatch(query)
 	}
 }
 
