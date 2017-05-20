@@ -38,16 +38,6 @@ type Window interface {
 type Text interface {
 	Init(Model)
 	Reload() error
-	Frame() Frame
-}
-
-type Frame interface {
-	Nchars() int
-	SelectionLines() (int, int)
-	CharsUntilXY(x, y int) int
-	Lines() int
-	WantCol() int
-	SetWantCol(int)
 }
 
 type Model interface{}

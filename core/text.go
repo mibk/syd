@@ -66,7 +66,6 @@ func (t *Text) Select(q0, q1 int64) {
 		return
 	}
 	t.q0, t.q1 = q0, q1
-	t.checkVisibility()
 }
 
 func (t *Text) Insert(s string) {
@@ -76,21 +75,11 @@ func (t *Text) Insert(s string) {
 	t.buf.Insert(t.q0, s)
 	q := t.q0 + int64(utf8.RuneCountInString(s))
 	t.q0, t.q1 = q, q
-	t.text.Frame().SetWantCol(ui.ColQ1)
-	t.checkVisibility()
 }
 
 func (t *Text) DeleteSel() {
 	t.buf.Delete(t.q0, t.q1)
 	t.q1 = t.q0
-	t.checkVisibility()
-}
-
-func (t *Text) checkVisibility() {
-	t.redraw()
-	if t.q0 < t.origin || t.q0 > t.origin+int64(t.text.Frame().Nchars())+1 {
-		t.origin = t.PrevNewLine(t.q0, 3)
-	}
 }
 
 func (t *Text) PrevNewLine(p int64, n int) int64 {

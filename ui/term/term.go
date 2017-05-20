@@ -632,20 +632,21 @@ func (t *Text) handleKeyEvent(ev key.Event) {
 	switch {
 	case ev.Rune == ui.KeyEnter:
 		t.model.InsertNewLine()
+		t.checkVisibility()
 	case ev.Rune == ui.KeyBackspace:
 		q0, q1 := t.model.Selected()
 		if q0 == q1 {
-			t.model.Select(q0-1, q1)
+			t.sel(q0-1, q1)
 		}
-		t.model.DeleteSel()
+		t.deleteSel()
 	case ev.Rune == ui.KeyDelete:
 		q0, q1 := t.model.Selected()
 		if q0 == q1 {
-			t.model.Select(q0, q1+1)
+			t.sel(q0, q1+1)
 		}
-		t.model.DeleteSel()
+		t.deleteSel()
 	case ev.Rune == ui.KeyEscape:
-		t.model.DeleteSel()
+		t.deleteSel()
 	case ev.Rune == ui.KeyLeft:
 		left(t)
 	case ev.Rune == ui.KeyRight:
@@ -663,41 +664,66 @@ func (t *Text) handleKeyEvent(ev key.Event) {
 			panic(err)
 		}
 		if ev.Rune == 'x' {
-			t.model.DeleteSel()
+			t.deleteSel()
 		}
 	case ev.Rune == 'v' && ev.Modifiers&key.ModControl != 0:
 		s, err := clipboard.ReadAll()
 		if err != nil {
 			panic(err)
 		}
-		t.model.Insert(s)
+		t.insert(s)
 	default:
-		t.model.Insert(string(ev.Rune))
+		t.insert(string(ev.Rune))
+	}
+}
+
+func (t *Text) sel(q0, q1 int64) {
+	t.model.Select(q0, q1)
+	t.checkVisibility()
+}
+
+func (t *Text) insert(s string) {
+	t.model.Insert(s)
+	t.frame.SetWantCol(ui.ColQ1)
+	t.checkVisibility()
+}
+
+func (t *Text) deleteSel() {
+	t.model.DeleteSel()
+	t.checkVisibility()
+}
+
+func (t *Text) checkVisibility() {
+	t.Reload()
+	origin := t.model.Origin()
+	q0, _ := t.model.Selected()
+	if q0 < origin || q0 > origin+int64(t.frame.Nchars())+1 {
+		t.model.SetOrigin(t.model.PrevNewLine(q0, 3))
 	}
 }
 
 func left(t *Text) {
 	q0, _ := t.model.Selected()
-	t.model.Select(q0-1, q0-1)
+	t.sel(q0-1, q0-1)
 	t.frame.SetWantCol(ui.ColQ0)
 }
 
 func right(t *Text) {
 	_, q1 := t.model.Selected()
-	t.model.Select(q1+1, q1+1)
+	t.sel(q1+1, q1+1)
 	t.frame.SetWantCol(ui.ColQ1)
 }
 
 func (t *Text) up() {
 	_, line1 := t.frame.SelectionLines()
 	q := t.findQ(line1 - 1)
-	t.model.Select(q, q)
+	t.sel(q, q)
 }
 
 func (t *Text) down() {
 	_, line1 := t.frame.SelectionLines()
 	q := t.findQ(line1 + 1)
-	t.model.Select(q, q)
+	t.sel(q, q)
 }
 
 func (t *Text) findQ(line int) int64 {
@@ -771,8 +797,6 @@ func (t *Text) clear() {
 
 	t.checkSelection()
 }
-
-func (t *Text) Select(p0, p1 int) { t.cur.p0, t.cur.p1 = p0, p1 }
 
 func (t *Text) Reload() error { return t.parent.reload() }
 
@@ -894,8 +918,6 @@ func (t *Text) fill() {
 		}
 	}
 }
-
-func (t *Text) Frame() ui.Frame { return t.frame }
 
 type Frame struct {
 	lines   [][]rune
