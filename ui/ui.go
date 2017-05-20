@@ -37,9 +37,6 @@ type ResetRuneReader interface {
 
 type UI interface {
 	Tag() Text
-	Flush()
-	Push_Key_Event(key.Event)
-	Push_Mouse_Event(mouse.Event)
 	NewColumn(Model) Column
 }
 

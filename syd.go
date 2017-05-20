@@ -12,13 +12,14 @@ func main() {
 	log.SetPrefix("syd: ")
 	log.SetFlags(0)
 
+	ed := core.NewEditor()
 	ui := &term.UI{}
-	if err := ui.Init(); err != nil {
+	if err := ui.Init(ed); err != nil {
 		log.Fatalln("initializing ui:", err)
 	}
 	defer ui.Close()
 
-	ed := core.NewEditor(ui)
+	ed.SetUI(ui)
 	col := ed.NewColumn()
 	if len(os.Args) == 1 {
 		col.NewWindow()
@@ -29,5 +30,5 @@ func main() {
 			}
 		}
 	}
-	ed.Main()
+	ui.Main()
 }

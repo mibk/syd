@@ -1,15 +1,9 @@
 package core
 
-import (
-	"github.com/mibk/syd/ui"
-	"golang.org/x/mobile/event/key"
-	"golang.org/x/mobile/event/mouse"
-)
+import "github.com/mibk/syd/ui"
 
 type Editor struct {
-	ui         ui.UI
-	events     chan ui.Event
-	shouldQuit bool
+	ui ui.UI
 
 	tag *Text
 
@@ -22,36 +16,23 @@ type Editor struct {
 	mode int
 }
 
-func NewEditor(u ui.UI) *Editor {
-	ed := &Editor{
-		ui:     u,
-		events: make(chan ui.Event),
-		wins:   make(map[string]*Window),
+func NewEditor() *Editor {
+	return &Editor{
+		wins: make(map[string]*Window),
 	}
+}
+
+func (ed *Editor) SetUI(u ui.UI) {
+	ed.ui = u
 	ed.tag = newText(ed, &BasicBuffer{[]rune("Newcol Exit ")}, u.Tag())
 	q := ed.tag.buf.End()
 	ed.tag.q0, ed.tag.q1 = q, q
-	return ed
 }
 
-func (ed *Editor) Main() {
-	for !ed.shouldQuit {
-		ed.tag.redraw()
-		for _, col := range ed.cols {
-			col.redraw()
-		}
-		ed.ui.Flush()
-		ev := <-ui.Events
-		if ev == ui.Quit {
-			return
-		}
-		switch ev := ev.(type) {
-		case key.Event:
-			ed.ui.Push_Key_Event(ev)
-		case mouse.Event:
-			// Temporary reasons...
-			ed.ui.Push_Mouse_Event(ev)
-		}
+func (ed *Editor) Refresh() {
+	ed.tag.redraw()
+	for _, col := range ed.cols {
+		col.redraw()
 	}
 }
 

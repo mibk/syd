@@ -33,7 +33,9 @@ type reloader interface {
 }
 
 type UI struct {
-	screen        tcell.Screen
+	screen tcell.Screen
+	model  *core.Editor
+
 	wasBtnPressed bool
 
 	width  int
@@ -47,7 +49,8 @@ type UI struct {
 	activeText *Text   // will receive key events
 }
 
-func (t *UI) Init() error {
+func (t *UI) Init(m ui.Model) error {
+	t.model = m.(*core.Editor)
 	sc, err := tcell.NewScreen()
 	if err != nil {
 		return err
@@ -80,6 +83,23 @@ func (t *UI) Close() error {
 	return nil
 }
 
+func (t *UI) Main() {
+	for {
+		t.model.Refresh()
+		t.flush()
+		ev := <-ui.Events
+		if ev == ui.Quit {
+			return
+		}
+		switch ev := ev.(type) {
+		case key.Event:
+			t.activeText.keyEventHandler(ev)
+		case mouse.Event:
+			t.handleMouseEvent(ev)
+		}
+	}
+}
+
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
 func (t *UI) Tag() ui.Text { return t.tag }
@@ -106,7 +126,7 @@ func (t *UI) clear() {
 // TODO: Just for testing purposes; remove.
 const ui_y = 1
 
-func (t *UI) Flush() {
+func (t *UI) flush() {
 	t.tag.x = ui_y
 	t.tag.y = ui_y
 	t.tag.height = len(t.tag.frame.lines)
@@ -134,8 +154,7 @@ func (t *UI) Flush() {
 	t.screen.Show()
 }
 
-// TODO: This is for temporary reasons. Remove it.
-func (t *UI) Push_Mouse_Event(ev mouse.Event) {
+func (t *UI) handleMouseEvent(ev mouse.Event) {
 	y := int(ev.Y)
 	if y < t.y() {
 		t.tag.handleMouseEvent(ev)
@@ -154,7 +173,6 @@ func (t *UI) Push_Mouse_Event(ev mouse.Event) {
 }
 
 func (t *UI) Push_Key_Event(ev key.Event) {
-	t.activeText.keyEventHandler(ev)
 }
 
 func (t *UI) NewColumn(m ui.Model) ui.Column {
