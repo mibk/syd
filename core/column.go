@@ -78,9 +78,9 @@ func (col *Column) removeWindow(todel ui.Window) *Window {
 }
 
 func (col *Column) Close() error {
-	for _, win := range col.wins {
+	for len(col.wins) > 0 {
 		// TODO: Check errors.
-		win.Close()
+		col.wins[len(col.wins)-1].Close()
 	}
 	col.col.Delete()
 	col.ed.deleteColumn(col)

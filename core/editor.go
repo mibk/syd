@@ -78,8 +78,8 @@ func (ed *Editor) NewColumn() *Column {
 }
 
 func (ed *Editor) Close() error {
-	for _, col := range ed.cols {
-		col.Close()
+	for len(ed.cols) > 0 {
+		ed.cols[len(ed.cols)-1].Close()
 	}
 	return nil
 }
