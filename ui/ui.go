@@ -37,7 +37,6 @@ type Window interface {
 
 type Text interface {
 	Init(Model)
-	Size() (w, h int)
 	Reload() error
 	Frame() Frame
 }

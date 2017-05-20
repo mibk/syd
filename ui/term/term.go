@@ -628,11 +628,6 @@ func (t *Text) Init(m ui.Model) {
 	t.model = m.(*core.Text)
 }
 
-// TODO: Probably remove.
-func (t *Text) Size() (w, h int) {
-	return t.width, t.height
-}
-
 func (t *Text) handleKeyEvent(ev key.Event) {
 	switch {
 	case ev.Rune == ui.KeyEnter:
@@ -657,9 +652,9 @@ func (t *Text) handleKeyEvent(ev key.Event) {
 		right(t)
 
 	case ev.Rune == ui.KeyUp:
-		t.model.Up()
+		t.up()
 	case ev.Rune == ui.KeyDown:
-		t.model.Down()
+		t.down()
 
 	case (ev.Rune == 'c' || ev.Rune == 'x') && ev.Modifiers&key.ModControl != 0:
 		s := t.model.SelectionToString(t.model.Selected())
@@ -691,6 +686,41 @@ func right(t *Text) {
 	_, q1 := t.model.Selected()
 	t.model.Select(q1+1, q1+1)
 	t.frame.SetWantCol(ui.ColQ1)
+}
+
+func (t *Text) up() {
+	_, line1 := t.frame.SelectionLines()
+	q := t.findQ(line1 - 1)
+	t.model.Select(q, q)
+}
+
+func (t *Text) down() {
+	_, line1 := t.frame.SelectionLines()
+	q := t.findQ(line1 + 1)
+	t.model.Select(q, q)
+}
+
+func (t *Text) findQ(line int) int64 {
+	if line < 0 {
+		t.model.SetOrigin(t.model.PrevNewLine(t.model.Origin(), -line))
+		t.Reload()
+		line = 0
+	} else if line > t.frame.Lines()-1 {
+		if t.frame.Lines() == t.height {
+			i := line - t.frame.Lines() + 1
+			oldOrg := t.model.Origin()
+			l := t.frame.Lines()
+			t.model.SetOrigin(oldOrg + int64(t.frame.CharsUntilXY(0, i)))
+			t.Reload()
+			if t.frame.Lines() < l {
+				t.model.SetOrigin(oldOrg)
+				t.Reload()
+			}
+		}
+		line = t.frame.Lines() - 1
+	}
+	q := t.model.Origin()
+	return q + int64(t.frame.CharsUntilXY(t.frame.WantCol(), line))
 }
 
 func (t *Text) handleMouseEvent(ev mouse.Event) {
