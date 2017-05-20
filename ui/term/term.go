@@ -10,6 +10,7 @@ import (
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 
+	"github.com/atotto/clipboard"
 	"github.com/gdamore/tcell"
 	"github.com/mibk/syd/core"
 	"github.com/mibk/syd/ui"
@@ -94,7 +95,7 @@ func (t *UI) Main() {
 		}
 		switch ev := ev.(type) {
 		case key.Event:
-			t.activeText.keyEventHandler(ev)
+			t.activeText.handleKeyEvent(ev)
 		case mouse.Event:
 			t.handleMouseEvent(ev)
 		}
@@ -619,8 +620,6 @@ type Text struct {
 	// styles
 	bgstyle tcell.Style
 	hlstyle tcell.Style
-
-	keyEventHandler ui.KeyEventHandler
 }
 
 // Init initializes t so it can be safely used.
@@ -632,6 +631,66 @@ func (t *Text) Init(m ui.Model) {
 // TODO: Probably remove.
 func (t *Text) Size() (w, h int) {
 	return t.width, t.height
+}
+
+func (t *Text) handleKeyEvent(ev key.Event) {
+	switch {
+	case ev.Rune == ui.KeyEnter:
+		t.model.InsertNewLine()
+	case ev.Rune == ui.KeyBackspace:
+		q0, q1 := t.model.Selected()
+		if q0 == q1 {
+			t.model.Select(q0-1, q1)
+		}
+		t.model.DeleteSel()
+	case ev.Rune == ui.KeyDelete:
+		q0, q1 := t.model.Selected()
+		if q0 == q1 {
+			t.model.Select(q0, q1+1)
+		}
+		t.model.DeleteSel()
+	case ev.Rune == ui.KeyEscape:
+		t.model.DeleteSel()
+	case ev.Rune == ui.KeyLeft:
+		left(t)
+	case ev.Rune == ui.KeyRight:
+		right(t)
+
+	case ev.Rune == ui.KeyUp:
+		t.model.Up()
+	case ev.Rune == ui.KeyDown:
+		t.model.Down()
+
+	case (ev.Rune == 'c' || ev.Rune == 'x') && ev.Modifiers&key.ModControl != 0:
+		s := t.model.SelectionToString(t.model.Selected())
+		err := clipboard.WriteAll(s)
+		if err != nil {
+			panic(err)
+		}
+		if ev.Rune == 'x' {
+			t.model.DeleteSel()
+		}
+	case ev.Rune == 'v' && ev.Modifiers&key.ModControl != 0:
+		s, err := clipboard.ReadAll()
+		if err != nil {
+			panic(err)
+		}
+		t.model.Insert(s)
+	default:
+		t.model.Insert(string(ev.Rune))
+	}
+}
+
+func left(t *Text) {
+	q0, _ := t.model.Selected()
+	t.model.Select(q0-1, q0-1)
+	t.frame.SetWantCol(ui.ColQ0)
+}
+
+func right(t *Text) {
+	_, q1 := t.model.Selected()
+	t.model.Select(q1+1, q1+1)
+	t.frame.SetWantCol(ui.ColQ1)
 }
 
 func (t *Text) handleMouseEvent(ev mouse.Event) {
@@ -663,10 +722,6 @@ func (t *Text) handleMouseEvent(ev mouse.Event) {
 			t.model.ScrollDown(3)
 		}
 	}
-}
-
-func (t *Text) OnKeyEvent(h ui.KeyEventHandler) {
-	t.keyEventHandler = h
 }
 
 func (t *Text) clear() {

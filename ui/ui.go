@@ -1,9 +1,5 @@
 package ui
 
-import "golang.org/x/mobile/event/key"
-
-type KeyEventHandler func(ev key.Event)
-
 const (
 	ColQ0 = -1
 	ColQ1 = -2
@@ -42,7 +38,6 @@ type Window interface {
 type Text interface {
 	Init(Model)
 	Size() (w, h int)
-	OnKeyEvent(KeyEventHandler)
 	Reload() error
 	Frame() Frame
 }

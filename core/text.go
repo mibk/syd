@@ -6,9 +6,6 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"golang.org/x/mobile/event/key"
-
-	"github.com/atotto/clipboard"
 	"github.com/mibk/syd/ui"
 )
 
@@ -32,7 +29,6 @@ func newText(ctx cmdContext, buf Buffer, tt ui.Text) *Text {
 		text: tt,
 	}
 	tt.Init(t)
-	tt.OnKeyEvent(t.handleKeyEvent)
 	return t
 }
 
@@ -237,65 +233,20 @@ func isAlphaNumeric(r rune) bool {
 
 func isPath(r rune) bool { return !unicode.IsSpace(r) && r != EOF && r != 0 }
 
-func (t *Text) handleKeyEvent(ev key.Event) {
-	switch {
-	case ev.Rune == ui.KeyEnter:
-		q0, _ := t.Selected()
-		p := t.PrevNewLine(q0, 1)
+func (t *Text) InsertNewLine() {
+	q0, _ := t.Selected()
+	p := t.PrevNewLine(q0, 1)
 
-		var indent []rune
-		for ; ; p++ {
-			r := t.readRuneAt(p)
-			if r != ' ' && r != '\t' {
-				break
-			}
-			indent = append(indent, r)
+	var indent []rune
+	for ; ; p++ {
+		r := t.readRuneAt(p)
+		if r != ' ' && r != '\t' {
+			break
 		}
-		t.Insert("\n" + string(indent))
-	case ev.Rune == ui.KeyBackspace:
-		q0, q1 := t.Selected()
-		if q0 == q1 {
-			t.Select(q0-1, q1)
-		}
-		t.DeleteSel()
-	case ev.Rune == ui.KeyDelete:
-		q0, q1 := t.Selected()
-		if q0 == q1 {
-			t.Select(q0, q1+1)
-		}
-		t.DeleteSel()
-	case ev.Rune == ui.KeyEscape:
-		t.DeleteSel()
-	case ev.Rune == ui.KeyLeft:
-		left(t)
-	case ev.Rune == ui.KeyRight:
-		right(t)
-
-	case ev.Rune == ui.KeyUp:
-		up(t)
-	case ev.Rune == ui.KeyDown:
-		down(t)
-
-	case (ev.Rune == 'c' || ev.Rune == 'x') && ev.Modifiers&key.ModControl != 0:
-		err := clipboard.WriteAll(t.SelectionToString(t.Selected()))
-		if err != nil {
-			panic(err)
-		}
-		if ev.Rune == 'x' {
-			t.DeleteSel()
-		}
-	case ev.Rune == 'v' && ev.Modifiers&key.ModControl != 0:
-		s, err := clipboard.ReadAll()
-		if err != nil {
-			panic(err)
-		}
-		t.Insert(s)
-	default:
-		t.Insert(string(ev.Rune))
+		indent = append(indent, r)
 	}
+	t.Insert("\n" + string(indent))
 }
-
-// TODO: Remove these.
 
 func (t *Text) ScrollUp(nlines int) {
 	t.SetOrigin(t.PrevNewLine(t.Origin(), nlines))
@@ -305,27 +256,15 @@ func (t *Text) ScrollDown(nlines int) {
 	t.SetOrigin(t.Origin() + int64(t.text.Frame().CharsUntilXY(0, nlines)))
 }
 
-// TODO: Is this the right place for these?
+// TODO: Remove these.
 
-func left(t *Text) {
-	q0, _ := t.Selected()
-	t.Select(q0-1, q0-1)
-	t.text.Frame().SetWantCol(ui.ColQ0)
-}
-
-func right(t *Text) {
-	_, q1 := t.Selected()
-	t.Select(q1+1, q1+1)
-	t.text.Frame().SetWantCol(ui.ColQ1)
-}
-
-func up(t *Text) {
+func (t *Text) Up() {
 	_, line1 := t.text.Frame().SelectionLines()
 	q := findQ(t, line1-1)
 	t.Select(q, q)
 }
 
-func down(t *Text) {
+func (t *Text) Down() {
 	_, line1 := t.text.Frame().SelectionLines()
 	q := findQ(t, line1+1)
 	t.Select(q, q)
