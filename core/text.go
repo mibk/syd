@@ -3,12 +3,10 @@ package core
 import (
 	"io"
 	"os"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
 	"golang.org/x/mobile/event/key"
-	"golang.org/x/mobile/event/mouse"
 
 	"github.com/atotto/clipboard"
 	"github.com/mibk/syd/ui"
@@ -19,10 +17,9 @@ type Text struct {
 	text ui.Text
 	buf  Buffer
 
-	origin    int64
-	q0, q1    int64
-	selEnd    *int64
-	timestamp time.Time
+	origin int64
+	q0, q1 int64
+	selEnd *int64
 
 	// position for ReadRune
 	pp int64
@@ -35,7 +32,6 @@ func newText(ctx cmdContext, buf Buffer, tt ui.Text) *Text {
 		text: tt,
 	}
 	tt.Init(t)
-	tt.OnMouseEvent(t.handleMouse)
 	tt.OnKeyEvent(t.handleKeyEvent)
 	return t
 }
@@ -131,38 +127,9 @@ func (t *Text) readRuneAt(off int64) rune {
 	return r
 }
 
-func (t *Text) handleMouse(p int, ev mouse.Event) {
-	q := t.origin + int64(p)
-	switch ev.Direction {
-	case mouse.DirPress:
-		switch {
-		case ev.Button == mouse.ButtonMiddle:
-			t.ExecuteUnderCursor(q)
-		case ev.Button == mouse.ButtonRight:
-			t.Plumb(q)
-		case time.Since(t.timestamp) < 300*time.Millisecond:
-			t.SelectUnderCursor(q)
-		default:
-			t.StartSel(q)
-		}
-	case mouse.DirRelease:
-		t.StopSel()
-	case mouse.DirNone:
-		t.MoveSel(q)
-	case mouse.DirStep:
-		switch ev.Button {
-		case mouse.ButtonWheelUp:
-			t.ScrollUp(3)
-		case mouse.ButtonWheelDown:
-			t.ScrollDown(3)
-		}
-	}
-}
-
 func (t *Text) StartSel(q int64) {
 	t.q0, t.q1 = q, q
 	t.selEnd = &t.q1
-	t.timestamp = time.Now()
 	// TODO: Get rid of SetWantCol.
 	t.text.Frame().SetWantCol(ui.ColQ0)
 }

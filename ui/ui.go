@@ -1,11 +1,6 @@
 package ui
 
-import (
-	"golang.org/x/mobile/event/key"
-	"golang.org/x/mobile/event/mouse"
-)
-
-type MouseEventHandler func(p int, ev mouse.Event)
+import "golang.org/x/mobile/event/key"
 
 type KeyEventHandler func(ev key.Event)
 
@@ -47,7 +42,6 @@ type Window interface {
 type Text interface {
 	Init(Model)
 	Size() (w, h int)
-	OnMouseEvent(MouseEventHandler)
 	OnKeyEvent(KeyEventHandler)
 	Reload() error
 	Frame() Frame

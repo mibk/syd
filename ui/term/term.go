@@ -3,6 +3,7 @@ package term
 import (
 	"fmt"
 	"io"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -613,13 +614,13 @@ type Text struct {
 		p0, p1 int // char position
 		x, y   int // current position
 	}
+	timestamp time.Time // last clicked
 
 	// styles
 	bgstyle tcell.Style
 	hlstyle tcell.Style
 
-	mouseEventHandler ui.MouseEventHandler
-	keyEventHandler   ui.KeyEventHandler
+	keyEventHandler ui.KeyEventHandler
 }
 
 // Init initializes t so it can be safely used.
@@ -634,15 +635,34 @@ func (t *Text) Size() (w, h int) {
 }
 
 func (t *Text) handleMouseEvent(ev mouse.Event) {
-	if t.mouseEventHandler == nil {
-		return
-	}
 	p := t.frame.CharsUntilXY(int(ev.X)-t.x, int(ev.Y)-t.y)
-	t.mouseEventHandler(p, ev)
-}
+	q := t.model.Origin() + int64(p)
 
-func (t *Text) OnMouseEvent(h ui.MouseEventHandler) {
-	t.mouseEventHandler = h
+	switch ev.Direction {
+	case mouse.DirPress:
+		switch {
+		case ev.Button == mouse.ButtonMiddle:
+			t.model.ExecuteUnderCursor(q)
+		case ev.Button == mouse.ButtonRight:
+			t.model.Plumb(q)
+		case time.Since(t.timestamp) < 300*time.Millisecond:
+			t.model.SelectUnderCursor(q)
+		default:
+			t.timestamp = time.Now()
+			t.model.StartSel(q)
+		}
+	case mouse.DirRelease:
+		t.model.StopSel()
+	case mouse.DirNone:
+		t.model.MoveSel(q)
+	case mouse.DirStep:
+		switch ev.Button {
+		case mouse.ButtonWheelUp:
+			t.model.ScrollUp(3)
+		case mouse.ButtonWheelDown:
+			t.model.ScrollDown(3)
+		}
+	}
 }
 
 func (t *Text) OnKeyEvent(h ui.KeyEventHandler) {
