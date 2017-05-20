@@ -157,13 +157,18 @@ func (t *UI) Push_Key_Event(ev key.Event) {
 	t.activeText.keyEventHandler(ev)
 }
 
-func (t *UI) NewColumn() ui.Column {
+func (t *UI) NewColumn(m ui.Model) ui.Column {
+	model := m.(*core.Column)
 	tag := &Text{
 		frame:   new(Frame),
 		bgstyle: tagbg,
 		hlstyle: taghl,
 	}
-	col := &Column{ui: t, tag: tag}
+	col := &Column{
+		ui:    t,
+		model: model,
+		tag:   tag,
+	}
 	tag.ui = t
 	tag.parent = col
 	if t.firstCol == nil {
@@ -245,22 +250,18 @@ func (t *UI) y() int {
 }
 
 type Column struct {
-	ui *UI
-	x  int
+	ui    *UI
+	model *core.Column
+
+	x int
 
 	tag *Text
-
-	winMovedHandler ui.WindowMovedHandler
 
 	firstWin *Window
 	nextCol  *Column
 }
 
 func (col *Column) Tag() ui.Text { return col.tag }
-
-func (col *Column) OnWindowMoved(h ui.WindowMovedHandler) {
-	col.winMovedHandler = h
-}
 
 func (col *Column) handleMouseEvent(ev mouse.Event) {
 	x, y := int(ev.X), int(ev.Y)
@@ -346,8 +347,13 @@ func (col *Column) NewWindow(m ui.Model) ui.Window {
 	return win
 }
 
-func (col *Column) Delete() {
-	col.ui.removeCol(col)
+func (col *Column) Update(msg ui.Message) {
+	switch msg {
+	case ui.Delete:
+		col.ui.removeCol(col)
+	default:
+		panic(fmt.Sprintf("unexpected message: %v", msg))
+	}
 }
 
 func (col *Column) reload() error {
@@ -416,7 +422,7 @@ func (col *Column) moveGrabbedWin(y int) {
 	col.ui.grabbedWin = nil
 
 	if col.firstWin == nil {
-		col.winMovedHandler(gw, gw.col)
+		gw.model.MoveToColumn(col.model)
 		gw.col.removeWin(gw)
 		col.firstWin = gw
 		gw.col = col
@@ -445,7 +451,7 @@ func (col *Column) moveGrabbedWin(y int) {
 			return
 		}
 	} else {
-		col.winMovedHandler(gw, gw.col)
+		gw.model.MoveToColumn(col.model)
 		gw.col.removeWin(gw)
 		gw.col = col
 		gw.nextWin = target.nextWin

@@ -67,11 +67,11 @@ func (col *Column) deleteWindow(todel *Window) {
 	panic("window not found")
 }
 
-func (col *Column) removeWindow(todel ui.Window) *Window {
+func (col *Column) removeWindow(todel *Window) {
 	for i, win := range col.wins {
-		if win.win == todel {
+		if win == todel {
 			col.wins = append(col.wins[:i], col.wins[i+1:]...)
-			return win
+			return
 		}
 	}
 	panic("window not found")
@@ -82,7 +82,7 @@ func (col *Column) Close() error {
 		// TODO: Check errors.
 		col.wins[len(col.wins)-1].Close()
 	}
-	col.col.Delete()
+	col.col.Update(ui.Delete)
 	col.ed.deleteColumn(col)
 	return nil
 }

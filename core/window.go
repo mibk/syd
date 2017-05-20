@@ -36,6 +36,15 @@ func (win *Window) Dirty() bool {
 	return win.buf.Dirty()
 }
 
+func (win *Window) MoveToColumn(col *Column) {
+	if win.col == col {
+		return
+	}
+	win.col.removeWindow(win)
+	win.col = col
+	col.wins = append(col.wins, win)
+}
+
 func (win *Window) redraw() {
 	win.tag.redraw()
 	win.body.redraw()

@@ -29,8 +29,6 @@ type Updater interface {
 
 // The following interfaces are for refactoring purposes only.
 
-type WindowMovedHandler func(win Window, from Column)
-
 type ResetRuneReader interface {
 	// Reset resets the reader to the original offset.
 	Reset()
@@ -42,14 +40,13 @@ type UI interface {
 	Flush()
 	Push_Key_Event(key.Event)
 	Push_Mouse_Event(mouse.Event)
-	NewColumn() Column
+	NewColumn(Model) Column
 }
 
 type Column interface {
+	Updater
 	NewWindow(Model) Window
-	Delete()
 	Tag() Text
-	OnWindowMoved(WindowMovedHandler)
 }
 
 type Window interface {

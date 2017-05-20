@@ -57,23 +57,14 @@ func (ed *Editor) Main() {
 }
 
 func (ed *Editor) NewColumn() *Column {
-	col := &Column{
-		ed:  ed,
-		col: ed.ui.NewColumn(),
-	}
+	col := &Column{ed: ed}
 	ed.cols = append(ed.cols, col)
+
+	column := ed.ui.NewColumn(col)
+	col.col = column
 	col.tag = newText(col, &BasicBuffer{[]rune("New Delcol ")}, col.col.Tag())
 	q := col.tag.buf.End()
 	col.tag.q0, col.tag.q1 = q, q
-	col.col.OnWindowMoved(func(win ui.Window, from ui.Column) {
-		if from == col.col {
-			return
-		}
-		fromCol := ed.findColumn(from)
-		ww := fromCol.removeWindow(win)
-		ww.col = col
-		col.wins = append(col.wins, ww)
-	})
 	return col
 }
 
@@ -89,15 +80,6 @@ func (ed *Editor) recentCol() *Column {
 		return ed.NewColumn()
 	}
 	return ed.cols[0]
-}
-
-func (ed *Editor) findColumn(tofind ui.Column) *Column {
-	for _, col := range ed.cols {
-		if col.col == tofind {
-			return col
-		}
-	}
-	panic("column not found")
 }
 
 func (ed *Editor) deleteColumn(todel *Column) {
