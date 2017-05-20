@@ -1,8 +1,6 @@
 package ui
 
 import (
-	"io"
-
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
 )
@@ -29,12 +27,6 @@ type Updater interface {
 
 // The following interfaces are for refactoring purposes only.
 
-type ResetRuneReader interface {
-	// Reset resets the reader to the original offset.
-	Reset()
-	io.RuneReader
-}
-
 type UI interface {
 	Tag() Text
 	NewColumn(Model) Column
@@ -53,11 +45,10 @@ type Window interface {
 }
 
 type Text interface {
-	Init(ResetRuneReader)
+	Init(Model)
 	Size() (w, h int)
 	OnMouseEvent(MouseEventHandler)
 	OnKeyEvent(KeyEventHandler)
-	Select(p0, p1 int)
 	Reload() error
 	Frame() Frame
 }

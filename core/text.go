@@ -50,7 +50,6 @@ func (t *Text) ReadRune() (r rune, size int, err error) {
 }
 
 func (t *Text) redraw() {
-	t.text.Select(int(t.q0-t.origin), int(t.q1-t.origin))
 	if err := t.text.Reload(); err != nil {
 		panic(err)
 	}

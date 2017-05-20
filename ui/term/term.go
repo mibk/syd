@@ -598,6 +598,8 @@ type Text struct {
 	ui    *UI
 	frame *Frame
 
+	model *core.Text
+
 	// TODO: If text is reloaded, it might require reloading
 	// of the parent component (e.g. when Text represents tag
 	// and the tag changes the number of lines). Revalidate
@@ -618,14 +620,12 @@ type Text struct {
 
 	mouseEventHandler ui.MouseEventHandler
 	keyEventHandler   ui.KeyEventHandler
-
-	rr ui.ResetRuneReader
 }
 
 // Init initializes t so it can be safely used.
-func (t *Text) Init(rr ui.ResetRuneReader) {
+func (t *Text) Init(m ui.Model) {
 	// TODO: Come up with a better design.
-	t.rr = rr
+	t.model = m.(*core.Text)
 }
 
 // TODO: Probably remove.
@@ -655,6 +655,11 @@ func (t *Text) clear() {
 		wantCol: t.frame.wantCol,
 	}
 	t.cur.x, t.cur.y = 0, 0
+
+	q0, q1 := t.model.Selected()
+	origin := t.model.Origin()
+	t.cur.p0, t.cur.p1 = int(q0-origin), int(q1-origin)
+
 	t.checkSelection()
 }
 
@@ -663,9 +668,9 @@ func (t *Text) Select(p0, p1 int) { t.cur.p0, t.cur.p1 = p0, p1 }
 func (t *Text) Reload() error { return t.parent.reload() }
 
 func (t *Text) reload() error {
-	t.rr.Reset()
+	t.model.Reset()
 	for {
-		r, _, err := t.rr.ReadRune()
+		r, _, err := t.model.ReadRune()
 		if err != nil {
 			if err == io.EOF {
 				break
