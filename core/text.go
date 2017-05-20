@@ -126,8 +126,6 @@ func (t *Text) readRuneAt(off int64) rune {
 func (t *Text) StartSel(q int64) {
 	t.q0, t.q1 = q, q
 	t.selEnd = &t.q1
-	// TODO: Get rid of SetWantCol.
-	t.text.Frame().SetWantCol(ui.ColQ0)
 }
 
 func (t *Text) MoveSel(q int64) {
@@ -246,12 +244,4 @@ func (t *Text) InsertNewLine() {
 		indent = append(indent, r)
 	}
 	t.Insert("\n" + string(indent))
-}
-
-func (t *Text) ScrollUp(nlines int) {
-	t.SetOrigin(t.PrevNewLine(t.Origin(), nlines))
-}
-
-func (t *Text) ScrollDown(nlines int) {
-	t.SetOrigin(t.Origin() + int64(t.text.Frame().CharsUntilXY(0, nlines)))
 }

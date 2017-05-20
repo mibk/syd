@@ -739,17 +739,21 @@ func (t *Text) handleMouseEvent(ev mouse.Event) {
 		default:
 			t.timestamp = time.Now()
 			t.model.StartSel(q)
+			t.frame.SetWantCol(ui.ColQ0)
 		}
 	case mouse.DirRelease:
 		t.model.StopSel()
 	case mouse.DirNone:
 		t.model.MoveSel(q)
 	case mouse.DirStep:
+		const nlines = 3
 		switch ev.Button {
 		case mouse.ButtonWheelUp:
-			t.model.ScrollUp(3)
+			neworg := t.model.PrevNewLine(t.model.Origin(), nlines)
+			t.model.SetOrigin(neworg)
 		case mouse.ButtonWheelDown:
-			t.model.ScrollDown(3)
+			n := int64(t.frame.CharsUntilXY(0, nlines))
+			t.model.SetOrigin(t.model.Origin() + n)
 		}
 	}
 }
