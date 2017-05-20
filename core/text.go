@@ -10,9 +10,8 @@ import (
 )
 
 type Text struct {
-	ctx  cmdContext
-	text ui.Text
-	buf  Buffer
+	ctx cmdContext
+	buf Buffer
 
 	origin int64
 	q0, q1 int64
@@ -24,9 +23,8 @@ type Text struct {
 
 func newText(ctx cmdContext, buf Buffer, tt ui.Text) *Text {
 	t := &Text{
-		ctx:  ctx,
-		buf:  buf,
-		text: tt,
+		ctx: ctx,
+		buf: buf,
 	}
 	tt.Init(t)
 	return t
@@ -39,12 +37,6 @@ func (t *Text) Reset() {
 func (t *Text) ReadRune() (r rune, size int, err error) {
 	t.pp++
 	return t.buf.ReadRuneAt(t.pp - 1)
-}
-
-func (t *Text) redraw() {
-	if err := t.text.Reload(); err != nil {
-		panic(err)
-	}
 }
 
 func (t *Text) Origin() int64 { return t.origin }

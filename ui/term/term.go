@@ -87,7 +87,7 @@ func (t *UI) Close() error {
 
 func (t *UI) Main() {
 	for {
-		t.model.Refresh()
+		t.reload()
 		t.flush()
 		ev := <-ui.Events
 		if ev == ui.Quit {
@@ -694,7 +694,7 @@ func (t *Text) deleteSel() {
 }
 
 func (t *Text) checkVisibility() {
-	t.Reload()
+	t.reloadWithParent()
 	origin := t.model.Origin()
 	q0, _ := t.model.Selected()
 	if q0 < origin || q0 > origin+int64(t.frame.Nchars())+1 {
@@ -729,7 +729,7 @@ func (t *Text) down() {
 func (t *Text) findQ(line int) int64 {
 	if line < 0 {
 		t.model.SetOrigin(t.model.PrevNewLine(t.model.Origin(), -line))
-		t.Reload()
+		t.reloadWithParent()
 		line = 0
 	} else if line > t.frame.Lines()-1 {
 		if t.frame.Lines() == t.height {
@@ -737,10 +737,10 @@ func (t *Text) findQ(line int) int64 {
 			oldOrg := t.model.Origin()
 			l := t.frame.Lines()
 			t.model.SetOrigin(oldOrg + int64(t.frame.CharsUntilXY(0, i)))
-			t.Reload()
+			t.reloadWithParent()
 			if t.frame.Lines() < l {
 				t.model.SetOrigin(oldOrg)
-				t.Reload()
+				t.reloadWithParent()
 			}
 		}
 		line = t.frame.Lines() - 1
@@ -798,7 +798,7 @@ func (t *Text) clear() {
 	t.checkSelection()
 }
 
-func (t *Text) Reload() error { return t.parent.reload() }
+func (t *Text) reloadWithParent() error { return t.parent.reload() }
 
 func (t *Text) reload() error {
 	t.model.Reset()

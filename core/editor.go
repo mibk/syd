@@ -29,13 +29,6 @@ func (ed *Editor) SetUI(u ui.UI) {
 	ed.tag.q0, ed.tag.q1 = q, q
 }
 
-func (ed *Editor) Refresh() {
-	ed.tag.redraw()
-	for _, col := range ed.cols {
-		col.redraw()
-	}
-}
-
 func (ed *Editor) NewColumn() *Column {
 	col := &Column{ed: ed}
 	ed.cols = append(ed.cols, col)

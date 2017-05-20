@@ -37,7 +37,6 @@ type Window interface {
 
 type Text interface {
 	Init(Model)
-	Reload() error
 }
 
 type Model interface{}

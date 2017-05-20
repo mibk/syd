@@ -45,11 +45,6 @@ func (win *Window) MoveToColumn(col *Column) {
 	col.wins = append(col.wins, win)
 }
 
-func (win *Window) redraw() {
-	win.tag.redraw()
-	win.body.redraw()
-}
-
 func (win *Window) Close() error {
 	win.win.Update(ui.Delete)
 	win.col.deleteWindow(win)

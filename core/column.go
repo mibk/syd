@@ -14,13 +14,6 @@ type Column struct {
 	col  ui.Column
 }
 
-func (col *Column) redraw() {
-	col.tag.redraw()
-	for _, win := range col.wins {
-		win.redraw()
-	}
-}
-
 func (col *Column) NewWindow() *Window {
 	return col.newWindow(BytesContent([]byte{}))
 }
