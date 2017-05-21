@@ -24,6 +24,8 @@ type Window struct {
 
 	// used by Read and flush methods
 	insertbuf bytes.Buffer
+
+	y float64
 }
 
 func (win *Window) SetFilename(filename string) {
@@ -43,6 +45,15 @@ func (win *Window) MoveToColumn(col *Column) {
 	win.col.removeWindow(win)
 	win.col = col
 	col.wins = append(col.wins, win)
+}
+
+func (win *Window) Y() float64 { return win.y }
+
+func (win *Window) SetY(y float64) {
+	if y < 0 || y > 1 {
+		panic("y must be in the range 0..1")
+	}
+	win.y = y
 }
 
 func (win *Window) Close() error {

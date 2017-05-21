@@ -12,6 +12,8 @@ type Column struct {
 	tag  *Text
 	wins []*Window
 	col  ui.Column
+
+	x float64
 }
 
 func (col *Column) NewWindow() *Window {
@@ -68,6 +70,15 @@ func (col *Column) removeWindow(todel *Window) {
 		}
 	}
 	panic("window not found")
+}
+
+func (col *Column) X() float64 { return col.x }
+
+func (col *Column) SetX(x float64) {
+	if x < 0 || x > 1 {
+		panic("x must be in the range 0..1")
+	}
+	col.x = x
 }
 
 func (col *Column) Close() error {
