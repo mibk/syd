@@ -44,7 +44,7 @@ func (win *Window) MoveToColumn(col *Column) {
 	if win.col == col {
 		return
 	}
-	win.col.deleteWindow(win)
+	win.col.removeWindow(win)
 	col.appendWindow(win)
 }
 
@@ -59,7 +59,7 @@ func (win *Window) SetY(y float64) {
 
 func (win *Window) Close() error {
 	win.win.Update(ui.Delete)
-	win.col.deleteWindow(win)
+	win.col.removeWindow(win)
 	if ed := win.col.ed; ed.errWin == win {
 		ed.errWin = nil
 	}

@@ -70,7 +70,7 @@ func (ed *Editor) MoveColumn(col *Column, x float64) {
 			return
 		}
 	} else {
-		ed.deleteColumn(col)
+		ed.removeColumn(col)
 		col.next = target.next
 		target.next = col
 	}
@@ -93,7 +93,7 @@ func (ed *Editor) recentCol() *Column {
 	return ed.firstCol
 }
 
-func (ed *Editor) deleteColumn(todel *Column) {
+func (ed *Editor) removeColumn(todel *Column) {
 	sentinel := &Column{next: ed.firstCol}
 	col := sentinel
 	for col.next != nil {

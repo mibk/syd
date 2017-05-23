@@ -66,7 +66,7 @@ func (col *Column) appendWindow(win *Window) {
 	col.firstWin = sentinel.next
 }
 
-func (col *Column) deleteWindow(todel *Window) {
+func (col *Column) removeWindow(todel *Window) {
 	sentinel := &Window{next: col.firstWin}
 	win := sentinel
 	for win.next != nil {
@@ -107,7 +107,7 @@ func (col *Column) Close() error {
 		win = win.next
 	}
 	col.col.Update(ui.Delete)
-	col.ed.deleteColumn(col)
+	col.ed.removeColumn(col)
 	return nil
 }
 
