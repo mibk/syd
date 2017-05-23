@@ -48,6 +48,35 @@ func (ed *Editor) NewColumn() *Column {
 	return col
 }
 
+func (ed *Editor) MoveColumn(col *Column, x float64) {
+	target := ed.firstCol
+	for target != nil {
+		if x < target.right() {
+			break
+		}
+		target = target.next
+	}
+	if target == nil {
+		return
+	}
+
+	if x == target.x {
+		// TODO: Adjust position. See "ui/term" moveGrabbedWin.
+		return
+	}
+
+	if col == target || (target.next != nil && col == target.next) {
+		if col == ed.firstCol {
+			return
+		}
+	} else {
+		ed.deleteColumn(col)
+		col.next = target.next
+		target.next = col
+	}
+	col.SetX(x)
+}
+
 func (ed *Editor) Close() error {
 	col := ed.firstCol
 	for col != nil {

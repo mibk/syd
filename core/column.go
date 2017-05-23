@@ -85,6 +85,13 @@ func (col *Column) deleteWindow(todel *Window) {
 
 func (col *Column) X() float64 { return col.x }
 
+func (col *Column) right() float64 {
+	if col.next == nil {
+		return 1
+	}
+	return col.next.x
+}
+
 func (col *Column) SetX(x float64) {
 	if x < 0 || x > 1 {
 		panic("x must be in the range 0..1")

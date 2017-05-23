@@ -3,6 +3,7 @@ package term
 import (
 	"fmt"
 	"io"
+	"sort"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -216,35 +217,27 @@ func (t *UI) moveGrabbedCol(x int) {
 	gc := t.grabbedCol
 	t.grabbedCol = nil
 
-	// TODO: If there are no columns.
+	t.model.MoveColumn(gc.model, float64(x)/float64(t.width))
 
-	target := t.firstCol
-	for target != nil {
-		if tarX := target.x(); x >= tarX && x < tarX+target.width() {
-			break
-		}
-		target = target.nextCol
+	// TODO: Just a temporary hack.
+	var cols []*Column
+	col := t.firstCol
+	for col != nil {
+		cols = append(cols, col)
+		col = col.nextCol
 	}
-	if target == nil {
-		// Nothing to do.
-		return
-	}
+	sort.Slice(cols, func(i, j int) bool {
+		return cols[i].model.X() < cols[j].model.X()
+	})
 
-	if x == target.x() {
-		// TODO: Adjust position. See moveGrabbedWin.
-		return
+	sentinel := &Column{}
+	prev := sentinel
+	for _, col := range cols {
+		prev.nextCol = col
+		prev = col
 	}
-
-	if gc == target || (target.nextCol != nil && gc == target.nextCol) {
-		if gc == t.firstCol {
-			return
-		}
-	} else {
-		t.removeCol(gc)
-		gc.nextCol = target.nextCol
-		target.nextCol = gc
-	}
-	gc.setx(x)
+	prev.nextCol = nil
+	t.firstCol = sentinel.nextCol
 }
 
 func (t *UI) removeCol(col *Column) {
