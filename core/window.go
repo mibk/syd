@@ -42,7 +42,7 @@ func (win *Window) MoveToColumn(col *Column) {
 	if win.col == col {
 		return
 	}
-	win.col.removeWindow(win)
+	win.col.deleteWindow(win)
 	win.col = col
 	col.wins = append(col.wins, win)
 }

@@ -62,16 +62,6 @@ func (col *Column) deleteWindow(todel *Window) {
 	panic("window not found")
 }
 
-func (col *Column) removeWindow(todel *Window) {
-	for i, win := range col.wins {
-		if win == todel {
-			col.wins = append(col.wins[:i], col.wins[i+1:]...)
-			return
-		}
-	}
-	panic("window not found")
-}
-
 func (col *Column) X() float64 { return col.x }
 
 func (col *Column) SetX(x float64) {
