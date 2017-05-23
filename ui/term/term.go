@@ -528,11 +528,11 @@ func (win *Window) Tag() ui.Text  { return win.tag }
 func (win *Window) Body() ui.Text { return win.body }
 
 func (win *Window) y() int {
-	return int(win.model.Y() * float64(win.col.width()))
+	return int(win.model.Y() * float64(win.col.ui.height))
 }
 
 func (win *Window) sety(y int) {
-	win.model.SetY(float64(y) / float64(win.col.width()))
+	win.model.SetY(float64(y) / float64(win.col.ui.height))
 }
 
 func (win *Window) reload() error {
