@@ -8,12 +8,14 @@ import (
 )
 
 type Column struct {
-	ed   *Editor
-	tag  *Text
-	wins []*Window
-	col  ui.Column
+	ed       *Editor
+	tag      *Text
+	firstWin *Window
+	col      ui.Column
 
 	x float64
+
+	next *Column
 }
 
 func (col *Column) NewWindow() *Window {
@@ -43,21 +45,40 @@ func (col *Column) NewWindowFile(filename string) (*Window, error) {
 
 func (col *Column) newWindow(con Content) *Window {
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
-	win := &Window{col: col, con: con, buf: buf}
+	win := &Window{con: con, buf: buf}
 	window := col.col.NewWindow(win)
 	win.win = window
 	win.tag = newText(win, &BasicBuffer{[]rune("\x00Del Put Undo Redo ")}, window.Tag())
 	win.body = newText(win, buf, window.Body())
-	col.wins = append(col.wins, win)
+	col.appendWindow(win)
 	return win
 }
 
+func (col *Column) appendWindow(win *Window) {
+	win.col = col
+	win.next = nil
+	sentinel := &Window{next: col.firstWin}
+	prev := sentinel
+	for prev.next != nil {
+		prev = prev.next
+	}
+	prev.next = win
+	col.firstWin = sentinel.next
+}
+
 func (col *Column) deleteWindow(todel *Window) {
-	for i, win := range col.wins {
-		if win == todel {
-			col.wins = append(col.wins[:i], col.wins[i+1:]...)
+	sentinel := &Window{next: col.firstWin}
+	win := sentinel
+	for win.next != nil {
+		if win.next == todel {
+			win.next = todel.next
+			col.firstWin = sentinel.next
+			if col.firstWin != nil {
+				col.firstWin.SetY(0)
+			}
 			return
 		}
+		win = win.next
 	}
 	panic("window not found")
 }
@@ -72,9 +93,11 @@ func (col *Column) SetX(x float64) {
 }
 
 func (col *Column) Close() error {
-	for len(col.wins) > 0 {
+	win := col.firstWin
+	for win != nil {
 		// TODO: Check errors.
-		col.wins[len(col.wins)-1].Close()
+		win.Close()
+		win = win.next
 	}
 	col.col.Update(ui.Delete)
 	col.ed.deleteColumn(col)

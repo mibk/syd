@@ -11,9 +11,9 @@ type Editor struct {
 	// with.
 	errWin *Window
 
-	cols []*Column
-	wins map[string]*Window
-	mode int
+	firstCol *Column
+	wins     map[string]*Window
+	mode     int
 }
 
 func NewEditor() *Editor {
@@ -31,7 +31,14 @@ func (ed *Editor) SetUI(u ui.UI) {
 
 func (ed *Editor) NewColumn() *Column {
 	col := &Column{ed: ed}
-	ed.cols = append(ed.cols, col)
+
+	sentinel := &Column{next: ed.firstCol}
+	prev := sentinel
+	for prev.next != nil {
+		prev = prev.next
+	}
+	prev.next = col
+	ed.firstCol = sentinel.next
 
 	column := ed.ui.NewColumn(col)
 	col.col = column
@@ -42,25 +49,34 @@ func (ed *Editor) NewColumn() *Column {
 }
 
 func (ed *Editor) Close() error {
-	for len(ed.cols) > 0 {
-		ed.cols[len(ed.cols)-1].Close()
+	col := ed.firstCol
+	for col != nil {
+		col.Close()
+		col = col.next
 	}
 	return nil
 }
 
 func (ed *Editor) recentCol() *Column {
-	if len(ed.cols) == 0 {
+	if ed.firstCol == nil {
 		return ed.NewColumn()
 	}
-	return ed.cols[0]
+	return ed.firstCol
 }
 
 func (ed *Editor) deleteColumn(todel *Column) {
-	for i, col := range ed.cols {
-		if col == todel {
-			ed.cols = append(ed.cols[:i], ed.cols[i+1:]...)
+	sentinel := &Column{next: ed.firstCol}
+	col := sentinel
+	for col.next != nil {
+		if col.next == todel {
+			col.next = todel.next
+			ed.firstCol = sentinel.next
+			if ed.firstCol != nil {
+				ed.firstCol.SetX(0)
+			}
 			return
 		}
+		col = col.next
 	}
 	panic("column not found")
 }

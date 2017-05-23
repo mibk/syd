@@ -26,6 +26,8 @@ type Window struct {
 	insertbuf bytes.Buffer
 
 	y float64
+
+	next *Window
 }
 
 func (win *Window) SetFilename(filename string) {
@@ -43,8 +45,7 @@ func (win *Window) MoveToColumn(col *Column) {
 		return
 	}
 	win.col.deleteWindow(win)
-	win.col = col
-	col.wins = append(col.wins, win)
+	col.appendWindow(win)
 }
 
 func (win *Window) Y() float64 { return win.y }
