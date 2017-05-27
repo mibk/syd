@@ -115,7 +115,7 @@ func (t *UI) reload() error {
 		if err := col.reload(); err != nil {
 			return nil
 		}
-		col = col.nextCol
+		col = col.next
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ func (t *UI) flush() {
 	col := t.firstCol
 	for col != nil {
 		col.flush()
-		col = col.nextCol
+		col = col.next
 	}
 
 	if t.firstCol == nil {
@@ -171,7 +171,7 @@ func (t *UI) handleMouseEvent(ev mouse.Event) {
 			col.handleMouseEvent(ev)
 			return
 		}
-		col = col.nextCol
+		col = col.next
 	}
 }
 
@@ -197,7 +197,7 @@ func (t *UI) NewColumn(m ui.Model) ui.Column {
 	} else {
 		prev := t.lastCol()
 		col.setx(prev.x() + prev.width()*3/5)
-		prev.nextCol = col
+		prev.next = col
 	}
 	return col
 }
@@ -207,8 +207,8 @@ func (t *UI) lastCol() *Column {
 	if col == nil {
 		return nil
 	}
-	for col.nextCol != nil {
-		col = col.nextCol
+	for col.next != nil {
+		col = col.next
 	}
 	return col
 }
@@ -224,7 +224,7 @@ func (t *UI) moveGrabbedCol(x int) {
 	col := t.firstCol
 	for col != nil {
 		cols = append(cols, col)
-		col = col.nextCol
+		col = col.next
 	}
 	sort.Slice(cols, func(i, j int) bool {
 		return cols[i].model.X() < cols[j].model.X()
@@ -233,27 +233,27 @@ func (t *UI) moveGrabbedCol(x int) {
 	sentinel := &Column{}
 	prev := sentinel
 	for _, col := range cols {
-		prev.nextCol = col
+		prev.next = col
 		prev = col
 	}
-	prev.nextCol = nil
-	t.firstCol = sentinel.nextCol
+	prev.next = nil
+	t.firstCol = sentinel.next
 }
 
 func (t *UI) removeCol(col *Column) {
-	sentinel := &Column{nextCol: t.firstCol}
+	sentinel := &Column{next: t.firstCol}
 	prev := sentinel
-	for prev.nextCol != nil {
-		if prev.nextCol == col {
-			prev.nextCol = col.nextCol
-			col.nextCol = nil
-			t.firstCol = sentinel.nextCol
+	for prev.next != nil {
+		if prev.next == col {
+			prev.next = col.next
+			col.next = nil
+			t.firstCol = sentinel.next
 			if t.firstCol != nil {
 				t.firstCol.setx(0)
 			}
 			return
 		}
-		prev = prev.nextCol
+		prev = prev.next
 	}
 	panic("column not found")
 }
@@ -269,7 +269,7 @@ type Column struct {
 	tag *Text
 
 	firstWin *Window
-	nextCol  *Column
+	next     *Column
 }
 
 func (col *Column) Tag() ui.Text { return col.tag }
@@ -311,7 +311,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 	win := col.firstWin
 	for win != nil {
 		if winY := win.y(); y < winY || y >= winY+win.height() {
-			win = win.nextWin
+			win = win.next
 			continue
 		}
 		if y >= win.body.y {
@@ -360,7 +360,7 @@ func (col *Column) NewWindow(m ui.Model) ui.Window {
 	} else {
 		prev := col.lastWin()
 		win.sety(prev.y() + prev.height()/2)
-		prev.nextWin = win
+		prev.next = win
 	}
 	return win
 }
@@ -382,7 +382,7 @@ func (col *Column) reload() error {
 		if err := win.reload(); err != nil {
 			return err
 		}
-		win = win.nextWin
+		win = win.next
 	}
 	return nil
 }
@@ -420,7 +420,7 @@ func (col *Column) flush() {
 	win := col.firstWin
 	for win != nil {
 		win.flush()
-		win = win.nextWin
+		win = win.next
 	}
 }
 
@@ -429,8 +429,8 @@ func (col *Column) lastWin() *Window {
 	if win == nil {
 		return nil
 	}
-	for win.nextWin != nil {
-		win = win.nextWin
+	for win.next != nil {
+		win = win.next
 	}
 	return win
 }
@@ -446,7 +446,7 @@ func (col *Column) moveGrabbedWin(y int) {
 	win := col.firstWin
 	for win != nil {
 		wins = append(wins, win)
-		win = win.nextWin
+		win = win.next
 	}
 	sort.Slice(wins, func(i, j int) bool {
 		return wins[i].model.Y() < wins[j].model.Y()
@@ -455,36 +455,36 @@ func (col *Column) moveGrabbedWin(y int) {
 	sentinel := &Window{}
 	prev := sentinel
 	for _, win := range wins {
-		prev.nextWin = win
+		prev.next = win
 		prev = win
 	}
-	prev.nextWin = nil
-	col.firstWin = sentinel.nextWin
+	prev.next = nil
+	col.firstWin = sentinel.next
 }
 
 func (col *Column) removeWin(win *Window) {
-	sentinel := &Window{nextWin: col.firstWin}
+	sentinel := &Window{next: col.firstWin}
 	prev := sentinel
-	for prev.nextWin != nil {
-		if prev.nextWin == win {
-			prev.nextWin = win.nextWin
-			win.nextWin = nil
-			col.firstWin = sentinel.nextWin
+	for prev.next != nil {
+		if prev.next == win {
+			prev.next = win.next
+			win.next = nil
+			col.firstWin = sentinel.next
 			if col.firstWin != nil {
 				col.firstWin.sety(0)
 			}
 			return
 		}
-		prev = prev.nextWin
+		prev = prev.next
 	}
 	panic("window not found")
 }
 
 func (col *Column) width() int {
-	if col.nextCol == nil {
+	if col.next == nil {
 		return col.ui.width - col.x()
 	}
-	return col.nextCol.x() - col.x()
+	return col.next.x() - col.x()
 }
 
 // Column's content y and height.
@@ -498,7 +498,7 @@ type Window struct {
 	tag  *Text
 	body *Text
 
-	nextWin *Window
+	next *Window
 }
 
 func (win *Window) Tag() ui.Text  { return win.tag }
@@ -578,10 +578,10 @@ func (win *Window) flush() {
 }
 
 func (win *Window) height() int {
-	if win.nextWin == nil {
+	if win.next == nil {
 		return win.col.height() - win.y()
 	}
-	return win.nextWin.y() - win.y()
+	return win.next.y() - win.y()
 }
 
 type Text struct {
