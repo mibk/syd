@@ -61,7 +61,7 @@ func (ed *Editor) MoveColumn(col *Column, x float64) {
 	}
 
 	if x == target.x {
-		// TODO: Adjust position. See "ui/term" moveGrabbedWin.
+		// TODO: Adjust position. See the method Column.MoveWindow.
 		return
 	}
 

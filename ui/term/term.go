@@ -439,43 +439,27 @@ func (col *Column) moveGrabbedWin(y int) {
 	gw := col.ui.grabbedWin
 	col.ui.grabbedWin = nil
 
-	if col.firstWin == nil {
-		gw.model.MoveToColumn(col.model)
-		gw.col.removeWin(gw)
-		col.firstWin = gw
-		gw.col = col
-		gw.sety(0)
-		return
-	}
+	col.model.MoveWindow(gw.model, float64(y)/float64(col.ui.height))
 
-	target := col.firstWin
-	for y < target.y() || y >= target.y()+target.height() {
-		target = target.nextWin
-		if target == nil {
-			// Nothing to do.
-			return
-		}
+	// TODO: Just a temporary hack.
+	var wins []*Window
+	win := col.firstWin
+	for win != nil {
+		wins = append(wins, win)
+		win = win.nextWin
 	}
+	sort.Slice(wins, func(i, j int) bool {
+		return wins[i].model.Y() < wins[j].model.Y()
+	})
 
-	if y == target.y() {
-		// TODO: If this happens, adjust position of the windows
-		// to ensure at least one line of each window is shown.
-		// Forbid it for now as it would cause panic otherwise.
-		return
+	sentinel := &Window{}
+	prev := sentinel
+	for _, win := range wins {
+		prev.nextWin = win
+		prev = win
 	}
-
-	if gw == target || (target.nextWin != nil && gw == target.nextWin) {
-		if gw == col.firstWin {
-			return
-		}
-	} else {
-		gw.model.MoveToColumn(col.model)
-		gw.col.removeWin(gw)
-		gw.col = col
-		gw.nextWin = target.nextWin
-		target.nextWin = gw
-	}
-	gw.sety(y)
+	prev.nextWin = nil
+	col.firstWin = sentinel.nextWin
 }
 
 func (col *Column) removeWin(win *Window) {

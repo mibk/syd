@@ -40,15 +40,14 @@ func (win *Window) Dirty() bool {
 	return win.buf.Dirty()
 }
 
-func (win *Window) MoveToColumn(col *Column) {
-	if win.col == col {
-		return
-	}
-	win.col.removeWindow(win)
-	col.appendWindow(win)
-}
-
 func (win *Window) Y() float64 { return win.y }
+
+func (win *Window) bottom() float64 {
+	if win.next == nil {
+		return 1
+	}
+	return win.next.y
+}
 
 func (win *Window) SetY(y float64) {
 	if y < 0 || y > 1 {

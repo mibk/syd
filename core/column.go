@@ -72,6 +72,7 @@ func (col *Column) removeWindow(todel *Window) {
 	for win.next != nil {
 		if win.next == todel {
 			win.next = todel.next
+			todel.next = nil
 			col.firstWin = sentinel.next
 			if col.firstWin != nil {
 				col.firstWin.SetY(0)
@@ -97,6 +98,59 @@ func (col *Column) SetX(x float64) {
 		panic("x must be in the range 0..1")
 	}
 	col.x = x
+}
+
+func (col *Column) MoveWindow(win *Window, y float64) {
+	if col.firstWin == nil {
+		col.maybe_Move_To_Different_Column(win)
+		win.col.removeWindow(win)
+		col.firstWin = win
+		win.col = col
+		win.SetY(0)
+		return
+	}
+
+	target := col.firstWin
+	for target != nil {
+		if y < target.bottom() {
+			break
+		}
+		target = target.next
+	}
+	if target == nil {
+		return
+	}
+
+	if y == target.y {
+		// TODO: If this happens, adjust position of the windows
+		// to ensure at least one line of each window is shown.
+		// Forbid it for now as it would cause panic otherwise.
+		return
+	}
+
+	if win == target || (target.next != nil && win == target.next) {
+		if win == col.firstWin {
+			return
+		}
+	} else {
+		col.maybe_Move_To_Different_Column(win)
+		win.col.removeWindow(win)
+		win.col = col
+		win.next = target.next
+		target.next = win
+	}
+	win.SetY(y)
+}
+
+// TODO: Temporary hack.
+func (col *Column) maybe_Move_To_Different_Column(win *Window) {
+	if col != win.col {
+		win.win.Update(ui.Delete)
+		ww := col.col.NewWindow(win)
+		ww.Tag().Init(win.tag)
+		ww.Body().Init(win.body)
+		win.win = ww
+	}
 }
 
 func (col *Column) Close() error {
