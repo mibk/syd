@@ -105,7 +105,7 @@ func (t *UI) Main() {
 
 func (t *UI) Size() (w, h int) { return t.screen.Size() }
 
-func (t *UI) Tag() ui.Text { return t.tag }
+func (t *UI) SetTag(m ui.Model) { t.tag.init(m) }
 
 func (t *UI) reload() error {
 	t.clear()
@@ -272,7 +272,7 @@ type Column struct {
 	next     *Column
 }
 
-func (col *Column) Tag() ui.Text { return col.tag }
+func (col *Column) SetTag(m ui.Model) { col.tag.init(m) }
 
 func (col *Column) x() int {
 	return int(col.model.X() * float64(col.ui.width))
@@ -501,8 +501,8 @@ type Window struct {
 	next *Window
 }
 
-func (win *Window) Tag() ui.Text  { return win.tag }
-func (win *Window) Body() ui.Text { return win.body }
+func (win *Window) SetTag(m ui.Model)  { win.tag.init(m) }
+func (win *Window) SetBody(m ui.Model) { win.body.init(m) }
 
 func (win *Window) y() int {
 	return int(win.model.Y() * float64(win.col.ui.height))
@@ -610,8 +610,7 @@ type Text struct {
 	hlstyle tcell.Style
 }
 
-// Init initializes t so it can be safely used.
-func (t *Text) Init(m ui.Model) {
+func (t *Text) init(m ui.Model) {
 	// TODO: Come up with a better design.
 	t.model = m.(*core.Text)
 }

@@ -24,7 +24,8 @@ func NewEditor() *Editor {
 
 func (ed *Editor) SetUI(u ui.UI) {
 	ed.ui = u
-	ed.tag = newText(ed, &BasicBuffer{[]rune("Newcol Exit ")}, u.Tag())
+	ed.tag = newText(ed, &BasicBuffer{[]rune("Newcol Exit ")})
+	u.SetTag(ed.tag)
 	q := ed.tag.buf.End()
 	ed.tag.q0, ed.tag.q1 = q, q
 }
@@ -42,7 +43,8 @@ func (ed *Editor) NewColumn() *Column {
 
 	column := ed.ui.NewColumn(col)
 	col.col = column
-	col.tag = newText(col, &BasicBuffer{[]rune("New Delcol ")}, col.col.Tag())
+	col.tag = newText(col, &BasicBuffer{[]rune("New Delcol ")})
+	column.SetTag(col.tag)
 	q := col.tag.buf.End()
 	col.tag.q0, col.tag.q1 = q, q
 	return col

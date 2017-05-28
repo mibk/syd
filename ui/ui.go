@@ -19,24 +19,20 @@ type Updater interface {
 // The following interfaces are for refactoring purposes only.
 
 type UI interface {
-	Tag() Text
+	SetTag(Model)
 	NewColumn(Model) Column
 }
 
 type Column interface {
 	Updater
+	SetTag(Model)
 	NewWindow(Model) Window
-	Tag() Text
 }
 
 type Window interface {
 	Updater
-	Tag() Text
-	Body() Text
-}
-
-type Text interface {
-	Init(Model)
+	SetTag(Model)
+	SetBody(Model)
 }
 
 type Model interface{}

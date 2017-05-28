@@ -48,8 +48,10 @@ func (col *Column) newWindow(con Content) *Window {
 	win := &Window{con: con, buf: buf}
 	window := col.col.NewWindow(win)
 	win.win = window
-	win.tag = newText(win, &BasicBuffer{[]rune("\x00Del Put Undo Redo ")}, window.Tag())
-	win.body = newText(win, buf, window.Body())
+	win.tag = newText(win, &BasicBuffer{[]rune("\x00Del Put Undo Redo ")})
+	win.body = newText(win, buf)
+	window.SetTag(win.tag)
+	window.SetBody(win.body)
 	col.appendWindow(win)
 	return win
 }
@@ -147,8 +149,8 @@ func (col *Column) maybe_Move_To_Different_Column(win *Window) {
 	if col != win.col {
 		win.win.Update(ui.Delete)
 		ww := col.col.NewWindow(win)
-		ww.Tag().Init(win.tag)
-		ww.Body().Init(win.body)
+		ww.SetTag(win.tag)
+		ww.SetBody(win.body)
 		win.win = ww
 	}
 }

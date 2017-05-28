@@ -5,8 +5,6 @@ import (
 	"os"
 	"unicode"
 	"unicode/utf8"
-
-	"github.com/mibk/syd/ui"
 )
 
 type Text struct {
@@ -21,13 +19,11 @@ type Text struct {
 	pp int64
 }
 
-func newText(ctx cmdContext, buf Buffer, tt ui.Text) *Text {
-	t := &Text{
+func newText(ctx cmdContext, buf Buffer) *Text {
+	return &Text{
 		ctx: ctx,
 		buf: buf,
 	}
-	tt.Init(t)
-	return t
 }
 
 func (t *Text) Reset() {
