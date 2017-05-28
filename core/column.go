@@ -128,7 +128,7 @@ func (col *Column) MoveWindow(win *Window, y float64) {
 		return
 	}
 
-	if win == target || (target.next != nil && win == target.next) {
+	if win == target || win == target.next {
 		if win == col.firstWin {
 			return
 		}

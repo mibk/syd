@@ -65,7 +65,7 @@ func (ed *Editor) MoveColumn(col *Column, x float64) {
 		return
 	}
 
-	if col == target || (target.next != nil && col == target.next) {
+	if col == target || col == target.next {
 		if col == ed.firstCol {
 			return
 		}
