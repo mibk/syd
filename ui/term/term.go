@@ -182,6 +182,7 @@ func (t *UI) Push_Key_Event(ev key.Event) {
 func (t *UI) NewColumn(m ui.Model) ui.Column {
 	model := m.(*core.Column)
 	tag := &Text{
+		ui:      t,
 		frame:   new(Frame),
 		bgstyle: tagbg,
 		hlstyle: taghl,
@@ -192,7 +193,6 @@ func (t *UI) NewColumn(m ui.Model) ui.Column {
 		model: model,
 		tag:   tag,
 	}
-	tag.ui = t
 	tag.parent = col
 	if t.firstCol == nil {
 		t.firstCol = col
@@ -334,11 +334,13 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 func (col *Column) NewWindow(m ui.Model) ui.Updater {
 	model := m.(*core.Window)
 	tag := &Text{
+		ui:      col.ui,
 		frame:   new(Frame),
 		bgstyle: tagbg,
 		hlstyle: taghl,
 	}
 	body := &Text{
+		ui:      col.ui,
 		frame:   new(Frame),
 		bgstyle: bodybg,
 		hlstyle: bodyhl,
@@ -351,9 +353,7 @@ func (col *Column) NewWindow(m ui.Model) ui.Updater {
 		tag:   tag,
 		body:  body,
 	}
-	tag.ui = col.ui
 	tag.parent = win
-	body.ui = col.ui
 	body.parent = win
 
 	if col.firstWin == nil {
