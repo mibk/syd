@@ -65,12 +65,13 @@ func (t *UI) Init(m ui.Model) error {
 	t.screen = sc
 
 	t.tag = &Text{
+		ui:      t,
 		parent:  t,
 		frame:   new(Frame),
 		bgstyle: tagbg,
 		hlstyle: taghl,
 	}
-	t.tag.ui = t
+	t.tag.init(t.model.Tag())
 
 	// TODO: Just for testing purposes.
 	w, h := t.Size()
@@ -185,6 +186,7 @@ func (t *UI) NewColumn(m ui.Model) ui.Column {
 		bgstyle: tagbg,
 		hlstyle: taghl,
 	}
+	tag.init(model.Tag())
 	col := &Column{
 		ui:    t,
 		model: model,
@@ -329,7 +331,7 @@ func (col *Column) handleMouseEvent(ev mouse.Event) {
 	}
 }
 
-func (col *Column) NewWindow(m ui.Model) ui.Window {
+func (col *Column) NewWindow(m ui.Model) ui.Updater {
 	model := m.(*core.Window)
 	tag := &Text{
 		frame:   new(Frame),
@@ -341,6 +343,8 @@ func (col *Column) NewWindow(m ui.Model) ui.Window {
 		bgstyle: bodybg,
 		hlstyle: bodyhl,
 	}
+	tag.init(model.Tag())
+	body.init(model.Body())
 	win := &Window{
 		model: model,
 		col:   col,
@@ -500,9 +504,6 @@ type Window struct {
 
 	next *Window
 }
-
-func (win *Window) SetTag(m ui.Model)  { win.tag.init(m) }
-func (win *Window) SetBody(m ui.Model) { win.body.init(m) }
 
 func (win *Window) y() int {
 	return int(win.model.Y() * float64(win.col.ui.height))

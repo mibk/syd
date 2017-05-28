@@ -56,6 +56,10 @@ func (win *Window) SetY(y float64) {
 	win.y = y
 }
 
+func (win *Window) Tag() *Text { return win.tag }
+
+func (win *Window) Body() *Text { return win.body }
+
 func (win *Window) Close() error {
 	win.win.Update(ui.Delete)
 	win.col.removeWindow(win)

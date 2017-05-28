@@ -46,13 +46,12 @@ func (col *Column) NewWindowFile(filename string) (*Window, error) {
 func (col *Column) newWindow(con Content) *Window {
 	buf := NewUndoBuffer(undo.NewBuffer(con.Bytes()))
 	win := &Window{con: con, buf: buf}
-	window := col.col.NewWindow(win)
-	win.win = window
 	win.tag = newText(win, &BasicBuffer{[]rune("\x00Del Put Undo Redo ")})
 	win.body = newText(win, buf)
-	window.SetTag(win.tag)
-	window.SetBody(win.body)
 	col.appendWindow(win)
+
+	window := col.col.NewWindow(win)
+	win.win = window
 	return win
 }
 
@@ -102,6 +101,8 @@ func (col *Column) SetX(x float64) {
 	col.x = x
 }
 
+func (col *Column) Tag() *Text { return col.tag }
+
 func (col *Column) MoveWindow(win *Window, y float64) {
 	if col.firstWin == nil {
 		col.maybe_Move_To_Different_Column(win)
@@ -149,8 +150,6 @@ func (col *Column) maybe_Move_To_Different_Column(win *Window) {
 	if col != win.col {
 		win.win.Update(ui.Delete)
 		ww := col.col.NewWindow(win)
-		ww.SetTag(win.tag)
-		ww.SetBody(win.body)
 		win.win = ww
 	}
 }
