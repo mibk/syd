@@ -3,7 +3,9 @@ package core
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"regexp"
 	"unicode/utf8"
 
@@ -92,8 +94,12 @@ func (win *Window) saveFile() {
 		win.readFilename()
 	}
 
-	// TODO: Don't use '~' suffix, make saving safer.
-	f, err := os.Create(win.filename + "~")
+	dst, err := filepath.Abs(win.filename)
+	if err != nil {
+		panic(err)
+	}
+	dir, file := filepath.Split(dst)
+	f, err := ioutil.TempFile(dir, ".~"+file)
 	if err != nil {
 		panic(err)
 	}
@@ -103,7 +109,7 @@ func (win *Window) saveFile() {
 	}
 	f.Close()
 
-	if err := os.Rename(win.filename+"~", win.filename); err != nil {
+	if err := os.Rename(f.Name(), dst); err != nil {
 		panic(err)
 	}
 }
