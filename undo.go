@@ -1,5 +1,5 @@
 // Based on the undo/redo functionality in the vis editor by Marc André Tanner,
-// lincensed under ISC license which can be found bellow. For further information
+// licensed under ISC license which can be found bellow. For further information
 // please visit http://repo.or.cz/w/vis.git or https://github.com/martanne/vis.
 //
 // Copyright (c) 2014 Marc André Tanner <mat at brain-dump.org>
@@ -24,11 +24,11 @@
 // 	https://github.com/martanne/vis.
 //
 //
-// Insertation
+// Insertion
 //
 // When inserting new data there are 2 cases to consider:
 //
-// 1. the insertion point falls into the middle of an exisiting piece which
+// 1. the insertion point falls into the middle of an existing piece which
 // is replaced by three new pieces:
 //
 //	/-+ --> +---------------+ --> +-\
@@ -73,8 +73,8 @@
 //
 // Changes
 //
-// Undoing and redoing works with actions (action is a group of changes: insertations
-// and deletations). An action is represented by any operations between two calls of
+// Undoing and redoing works with actions (action is a group of changes: insertions
+// and deletions). An action is represented by any operations between two calls of
 // Commit method. Anything that happens between these two calls is a part of that
 // particular action.
 package undo
